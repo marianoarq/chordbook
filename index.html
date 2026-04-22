@@ -219,11 +219,14 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
     <div style="font-family:'DM Mono',monospace;font-size:.65rem;color:#5c544c;letter-spacing:2px;text-align:center;">TUS CANCIONES EN LA NUBE</div>
     <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
       <div style="font-family:'DM Mono',monospace;font-size:.6rem;color:#5c544c;letter-spacing:1px;">EMAIL</div>
-      <input id="loginEmail" type="email" placeholder="tu@email.com" style="background:#1e1a17;border:1px solid #2e2825;color:#f0ebe3;font-family:'DM Sans',sans-serif;font-size:.95rem;padding:12px 14px;border-radius:8px;width:100%;outline:none;" onfocus="this.style.borderColor='#c96a4a'" onblur="this.style.borderColor='#2e2825'">
+      <input id="loginEmail" type="email" placeholder="tu@email.com" style="background:#1e1a17;border:1px solid #2e2825;color:#f0ebe3;font-family:'DM Sans',sans-serif;font-size:.95rem;padding:12px 14px;border-radius:8px;width:100%;outline:none;" onfocus="this.style.borderColor='#c96a4a'" onblur="this.style.borderColor='#2e2825'"
+        onkeydown="if(event.key==='Enter')doLogin()">
       <button onclick="doLogin()" style="background:#c96a4a;color:#0e0c0b;border:none;padding:13px;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;cursor:pointer;width:100%;">ENVIAR LINK DE ACCESO</button>
     </div>
     <div id="loginMsg" style="font-family:'DM Mono',monospace;font-size:.62rem;color:#5c544c;text-align:center;line-height:1.7;"></div>
     <div style="font-family:'DM Mono',monospace;font-size:.55rem;color:#3a332e;text-align:center;line-height:1.8;">Te mandamos un link por email.<br>Sin contraseña, acceso seguro.</div>
+    <!-- Bypass: usar sin cuenta (datos solo en este dispositivo) -->
+    <button onclick="usarSinCuenta()" style="background:none;border:none;color:#3a332e;font-family:'DM Mono',monospace;font-size:.55rem;letter-spacing:1px;cursor:pointer;text-decoration:underline;margin-top:-8px;">usar sin cuenta (solo este dispositivo)</button>
   </div>
 </div>
 
@@ -284,16 +287,24 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
   </div>
 </div>
 
-<!-- STRUCT ED -->
+<!-- STRUCT ED — Partes + Estructura -->
 <div id="sStruct" class="scr" style="background:#0e0c0b;">
   <div class="se-hdr">
     <button class="btn-back" onclick="back()">←</button>
-    <div class="ed-title" id="seTitle">Estructura</div>
-    <button class="btn-done" onclick="doneStruct()">Guardar</button>
+    <div class="ed-title" id="seTitle">Editar canción</div>
+    <button class="btn-done" onclick="doneStruct()">✓ Guardar</button>
   </div>
-  <div class="se-scroll" id="seScroll"></div>
-  <div class="se-foot">
-    <button class="btn-addsec" onclick="addSec()">+ sección</button>
+  <!-- Tabs: Partes / Estructura -->
+  <div style="display:flex;background:#161311;border-bottom:1px solid #2e2825;flex-shrink:0;">
+    <button id="tabPartes" onclick="seTab('partes')" style="flex:1;padding:9px;border:none;background:none;font-family:'DM Mono',monospace;font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:#c96a4a;border-bottom:2px solid #c96a4a;cursor:pointer;">PARTES</button>
+    <button id="tabEstr" onclick="seTab('estr')" style="flex:1;padding:9px;border:none;background:none;font-family:'DM Mono',monospace;font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:#5c544c;border-bottom:2px solid transparent;cursor:pointer;">ESTRUCTURA</button>
+  </div>
+  <!-- PARTES panel -->
+  <div id="panelPartes" class="se-scroll" id="sePartes"></div>
+  <!-- ESTRUCTURA panel -->
+  <div id="panelEstr" class="se-scroll" style="display:none;"></div>
+  <div class="se-foot" id="sefoot">
+    <button class="btn-addsec" id="seFootBtn" onclick="seFootAction()">+ parte</button>
     <button class="btn-done" onclick="doneStruct()">✓ Listo</button>
   </div>
 </div>
@@ -445,6 +456,11 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
   <div class="cpgrp">Menor</div><div class="cprow" id="cpMin"></div>
   <div class="cpgrp">7 / Dom</div><div class="cprow" id="cpDom"></div>
   <div class="cpgrp">Sus / Add</div><div class="cprow" id="cpSus"></div>
+  <div class="cpgrp">Repetición</div>
+  <div class="cprow">
+    <button class="cpbtn" style="background:#2e2825;color:#f0ebe3;font-size:1rem;" onmousedown="e=>e.preventDefault()" onclick="insertPct()">%</button>
+    <span style="font-family:'DM Mono',monospace;font-size:.55rem;color:#5c544c;padding:4px 6px;">= repetir acorde anterior</span>
+  </div>
   <button class="cpclose" onclick="hideCP()">cerrar ✕</button>
 </div>
 
@@ -670,77 +686,320 @@ function syncSlSongs(si,slIds){
 // ═══════════════════════════════════════════════════
 // STRUCT EDITOR
 // ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// STRUCT EDITOR — Partes + Estructura
+// song.partes = { 'A': [[ch,ch,ch,ch], [ch,...]], ... }
+// song.estructura = [ {nombre, parte, reps, obs}, ... ]
+// ═══════════════════════════════════════════════════
+let seCurrentTab = 'partes';
+
 function openStructEd(idx){
   editIdx=idx;
   const s=songs[idx];
-  if(!s.sections||!s.sections.length)s.sections=[{name:'Intro',compases:[mkC(s.sig)]}];
-  document.getElementById('seTitle').textContent=s.title;
-  renderStruct(); show('sStruct');
+  // Migrate old sections format if needed
+  if(!s.partes) s.partes = {};
+  if(!s.estructura) s.estructura = [];
+  // If migrating from old format
+  if(s.sections && s.sections.length && !Object.keys(s.partes).length){
+    s.sections.forEach((sec,i)=>{
+      const letra = String.fromCharCode(65+i); // A, B, C...
+      s.partes[letra] = sec.compases.map(c=>c.times||[]);
+    });
+    s.estructura = s.sections.map((sec,i)=>({
+      nombre: sec.name,
+      parte: String.fromCharCode(65+i),
+      reps: 1,
+      obs: ''
+    }));
+  }
+  document.getElementById('seTitle').textContent = s.title;
+  seTab('partes');
+  show('sStruct');
 }
-function mkC(sig){return{lyric:'',sig:sig||4,times:Array(sig||4).fill('')};}
-function renderStruct(){
-  const s=songs[editIdx],el=document.getElementById('seScroll');el.innerHTML='';
-  s.sections.forEach((sec,si)=>{
-    const blk=document.createElement('div');blk.className='sec-block';blk.dataset.si=si;
-    blk.innerHTML=`<div class="sec-hdr"><div class="sec-lbl">${esc(sec.name)}</div>
+
+function seTab(tab){
+  seCurrentTab = tab;
+  const isPartes = tab==='partes';
+  document.getElementById('tabPartes').style.color = isPartes?'#c96a4a':'#5c544c';
+  document.getElementById('tabPartes').style.borderBottomColor = isPartes?'#c96a4a':'transparent';
+  document.getElementById('tabEstr').style.color = isPartes?'#5c544c':'#c96a4a';
+  document.getElementById('tabEstr').style.borderBottomColor = isPartes?'transparent':'#c96a4a';
+  document.getElementById('panelPartes').style.display = isPartes?'':'none';
+  document.getElementById('panelEstr').style.display = isPartes?'none':'';
+  document.getElementById('seFootBtn').textContent = isPartes?'+ parte':'+ sección';
+  if(isPartes) renderPartes(); else renderEstructura();
+}
+
+function seFootAction(){
+  if(seCurrentTab==='partes') addParte();
+  else addEstrSec();
+}
+
+// ── PARTES ────────────────────────────────────────
+// Compress 4 times into unique groups for display
+// [Reb,Reb,Lab,Lab] → [{ch:'Reb',span:2},{ch:'Lab',span:2}]
+// [Reb,Reb,Reb,Reb] → [{ch:'Reb',span:4}]
+// [Reb,Lab,Sib,%]   → [{ch:'Reb',span:1},{ch:'Lab',span:1},...]
+function compressCompas(times, resolvedTimes){
+  // resolvedTimes = times with % already resolved
+  const groups=[];
+  let i=0;
+  while(i<resolvedTimes.length){
+    let span=1;
+    while(i+span<resolvedTimes.length && resolvedTimes[i+span]===resolvedTimes[i]) span++;
+    groups.push({ch:resolvedTimes[i], orig:times[i], span});
+    i+=span;
+  }
+  return groups;
+}
+
+// Render compressed compas as inline chord display
+function renderCompasCompressed(times, resolvedTimes, big){
+  const groups=compressCompas(times, resolvedTimes);
+  const fs=big?'1rem':'.82rem';
+  const pad=big?'5px 8px':'3px 6px';
+  let html=`<div style="display:inline-flex;gap:3px;align-items:center;">`;
+  groups.forEach(g=>{
+    const isRep=g.orig==='%';
+    const col=isRep?'#5c544c':'#e8896a';
+    const transposed=transposeChord(g.ch,rT);
+    // Width proportional to span (span=1→1 unit, span=2→wider)
+    const minW=g.span>1?(g.span*28)+'px':'28px';
+    html+=`<div style="font-family:'DM Mono',monospace;font-size:${fs};font-weight:500;color:${col};min-width:${minW};text-align:center;padding:${pad};background:#161311;border-radius:4px;border:1px solid #2e2825;">${esc(transposed)}</div>`;
+  });
+  html+=`</div>`;
+  return html;
+}
+
+let activeCompas = null;
+
+// Normalize compas: accepts ['ch','ch','ch','ch'] or {times,reps}
+function normCompas(c){ return Array.isArray(c)?{times:c,reps:1}:{times:c.times||['','','',''],reps:c.reps||1}; }
+function setCompasReps(letra,ci,reps){ collectPartes(); const c=songs[editIdx].partes[letra][ci]; if(Array.isArray(c))songs[editIdx].partes[letra][ci]={times:c,reps}; else c.reps=reps; renderPartes(); }
+
+function renderPartes(){
+  const s=songs[editIdx];
+  const el=document.getElementById('panelPartes');
+  el.innerHTML='';
+  Object.entries(s.partes).forEach(([letra,compases])=>{
+    const blk=document.createElement('div');blk.className='sec-block';
+    blk.innerHTML=`<div class="sec-hdr">
+      <div class="sec-lbl" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:2px;">PARTE ${letra}</div>
       <div style="display:flex;gap:5px;">
-        <button class="xs" onclick="renSec(${si})">✎</button>
-        <button class="xs" onclick="addC(${si})">+ compás</button>
-        <button class="xs del" onclick="delSec(${si})">✕</button>
+        <button class="xs" onclick="addCompas('${letra}')">+ compás</button>
+        <button class="xs del" onclick="deleteParte('${letra}')">✕</button>
       </div></div>`;
-    sec.compases.forEach((c,ci)=>blk.appendChild(buildCRow(si,ci,c)));
-    const ab=document.createElement('button');ab.className='add-row-btn';ab.textContent='+ compás';
-    ab.onclick=()=>{collectDOM();addC(si);};blk.appendChild(ab);
+
+    const grid=document.createElement('div');
+    grid.style.cssText='padding:10px 11px;display:flex;flex-wrap:wrap;gap:8px;background:#1e1a17;border:1px solid #2e2825;border-top:none;border-radius:0 0 6px 6px;';
+
+    compases.forEach((rawC,ci)=>{
+      const comp=normCompas(rawC);
+      const times=comp.times; while(times.length<4) times.push('');
+      const reps=comp.reps||1;
+      const key=letra+'-'+ci;
+      const isOpen=activeCompas===key;
+      const wrap=document.createElement('div');
+      wrap.style.cssText='display:flex;flex-direction:column;gap:4px;';
+
+      // PILL ROW: pill + reps control
+      const pillRow=document.createElement('div');
+      pillRow.style.cssText='display:flex;align-items:center;gap:5px;';
+
+      const resolved=times.map((ch,ti)=>resolvePercentEdit(s,letra,ci,ti,ch));
+      const groups=compressCompas(times,resolved);
+      const pill=document.createElement('div');
+      pill.style.cssText=`display:inline-flex;align-items:center;gap:5px;padding:8px 14px;background:${isOpen?'#2e2825':'#161311'};border:2px solid ${isOpen?'#c96a4a':'#2e2825'};border-radius:6px;cursor:pointer;min-width:50px;`;
+      const makePillContent=(gs)=>gs.length?gs.map((g,gi)=>(gi>0?'<span style="color:#3a332e;font-size:.7rem;"> — </span>':'')+`<span style="font-family:'DM Mono',monospace;font-size:1.05rem;font-weight:500;color:${g.orig==='%'?'#5c544c':'#e8896a'};">${g.ch||'—'}</span>`).join(''):'<span style="color:#3a332e;font-size:.8rem;">vacío</span>';
+      pill.innerHTML=makePillContent(groups);
+      pill.onclick=()=>{ collectPartes(); activeCompas=isOpen?null:key; renderPartes(); };
+      pillRow.appendChild(pill);
+
+      // Reps control: − × N +
+      const repsBox=document.createElement('div');
+      repsBox.style.cssText='display:flex;align-items:center;gap:2px;';
+      const rminus=document.createElement('button');
+      rminus.textContent='−';rminus.className='xs';
+      rminus.style.cssText='width:22px;height:22px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;';
+      rminus.onclick=(e)=>{e.stopPropagation();const nr=Math.max(1,reps-1);setCompasReps(letra,ci,nr);};
+      const rlbl=document.createElement('span');
+      rlbl.style.cssText='font-family:Bebas Neue,sans-serif;font-size:.9rem;color:'+(reps>1?'#e8896a':'#3a332e')+';min-width:28px;text-align:center;';
+      rlbl.textContent=reps>1?'×'+reps:'×1';
+      const rplus=document.createElement('button');
+      rplus.textContent='+';rplus.className='xs';
+      rplus.style.cssText='width:22px;height:22px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;';
+      rplus.onclick=(e)=>{e.stopPropagation();const nr=Math.min(16,reps+1);setCompasReps(letra,ci,nr);};
+      repsBox.appendChild(rminus);repsBox.appendChild(rlbl);repsBox.appendChild(rplus);
+      pillRow.appendChild(repsBox);
+      wrap.appendChild(pillRow);
+
+      // EXPANDED EDITOR
+      if(isOpen){
+        const editor=document.createElement('div');
+        editor.style.cssText='background:#0e0c0b;border:2px solid #c96a4a;border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:8px;';
+        const trow=document.createElement('div');
+        trow.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:6px;';
+        for(let t=0;t<4;t++){
+          const cell=document.createElement('div');
+          cell.style.cssText='display:flex;flex-direction:column;align-items:center;gap:4px;';
+          const lbl=document.createElement('div');
+          lbl.style.cssText='font-family:DM Mono,monospace;font-size:.55rem;color:#5c544c;letter-spacing:1px;';
+          lbl.textContent='T'+(t+1);
+          const inp=document.createElement('input');
+          inp.type='text';inp.className='tinp';
+          inp.dataset.letra=letra;inp.dataset.ci=ci;inp.dataset.t=t;
+          inp.value=times[t]||'';inp.placeholder='—';inp.maxLength=8;
+          inp.style.cssText='background:#1e1a17;border:1px solid #2e2825;border-radius:4px;padding:8px 4px;text-align:center;font-size:1.1rem;width:100%;font-family:DM Mono,monospace;font-weight:500;outline:none;';
+          inp.style.color=times[t]==='%'?'#c96a4a':'#e8896a';
+          inp.addEventListener('focus',function(){showCP(this);});
+          inp.addEventListener('input',function(){
+            hideCP();
+            this.style.color=this.value==='%'?'#c96a4a':'#e8896a';
+            collectPartes();
+            const nt=s.partes[letra][ci];
+            const nr=nt.map((ch,ti)=>resolvePercentEdit(s,letra,ci,ti,ch));
+            const ng=compressCompas(nt,nr);
+            pill.innerHTML=makePillContent(ng);
+          });
+          cell.appendChild(lbl);cell.appendChild(inp);trow.appendChild(cell);
+        }
+        editor.appendChild(trow);
+        const arow=document.createElement('div');
+        arow.style.cssText='display:flex;gap:6px;justify-content:flex-end;';
+        const dup=document.createElement('button');dup.className='xs';dup.textContent='⧉ duplicar';
+        dup.onclick=()=>{collectPartes();const copy=[...s.partes[letra][ci]];s.partes[letra].splice(ci+1,0,copy);activeCompas=letra+'-'+(ci+1);renderPartes();};
+        const db=document.createElement('button');db.className='xs del';db.textContent='✕ eliminar';
+        db.onclick=()=>{collectPartes();if(s.partes[letra].length<=1){alert('Mínimo 1 compás.');return;}s.partes[letra].splice(ci,1);activeCompas=null;renderPartes();};
+        arow.appendChild(dup);arow.appendChild(db);
+        editor.appendChild(arow);
+        wrap.appendChild(editor);
+      }
+      grid.appendChild(wrap);
+    });
+    blk.appendChild(grid);
     el.appendChild(blk);
   });
 }
-function buildCRow(si,ci,c){
-  const w=document.createElement('div');w.className='crow';w.dataset.si=si;w.dataset.ci=ci;
-  const li=document.createElement('input');li.className='lyric-inp';li.type='text';
-  li.placeholder='Letra (opcional)';li.value=c.lyric||'';li.dataset.f='lyric';w.appendChild(li);
-  const sig=c.sig||4;
-  const g=document.createElement('div');g.className='tgrid t'+sig;
-  for(let t=0;t<sig;t++){
-    const cell=document.createElement('div');cell.className='tcell';
-    const num=document.createElement('div');num.className='tnum';num.textContent='T'+(t+1);
-    const inp=document.createElement('input');inp.type='text';inp.className='tinp';
-    inp.value=c.times[t]||'';inp.placeholder='—';inp.maxLength=8;inp.dataset.t=t;
-    inp.addEventListener('focus',function(){showCP(this);});
-    inp.addEventListener('input',()=>hideCP());
-    cell.appendChild(num);cell.appendChild(inp);g.appendChild(cell);
-  }
-  w.appendChild(g);
-  const ft=document.createElement('div');ft.className='cfoot';
-  const sel=document.createElement('select');sel.className='sigsel';
-  [{v:4,l:'4/4'},{v:3,l:'3/4'},{v:2,l:'2/4'}].forEach(o=>{
-    const op=document.createElement('option');op.value=o.v;op.textContent=o.l;
-    if(o.v===sig)op.selected=true;sel.appendChild(op);
-  });
-  sel.onchange=()=>{collectDOM();songs[editIdx].sections[si].compases[ci].sig=parseInt(sel.value);songs[editIdx].sections[si].compases[ci].times=Array(parseInt(sel.value)).fill('');renderStruct();};
-  ft.appendChild(sel);
-  const sp=document.createElement('div');sp.style.flex='1';ft.appendChild(sp);
-  const dup=document.createElement('button');dup.className='xs';dup.textContent='⧉';
-  dup.onclick=()=>{collectDOM();const copy=JSON.parse(JSON.stringify(songs[editIdx].sections[si].compases[ci]));songs[editIdx].sections[si].compases.splice(ci+1,0,copy);renderStruct();};
-  ft.appendChild(dup);
-  const db=document.createElement('button');db.className='xs del';db.textContent='✕';
-  db.onclick=()=>{collectDOM();const c=songs[editIdx].sections[si].compases;if(c.length<=1){alert('Mínimo 1.');return;}c.splice(ci,1);renderStruct();};
-  ft.appendChild(db);w.appendChild(ft);return w;
+
+function resolvePercentEdit(s,letra,ci,ti,ch){
+  if(ch!=='%') return ch||'—';
+  const parte=s.partes[letra];
+  if(ci>0&&parte[ci-1]){const prev=parte[ci-1][ti];if(prev&&prev!=='%')return prev;return resolvePercentEdit(s,letra,ci-1,ti,prev||'%');}
+  if(ti>0){const prev=parte[ci][ti-1];if(prev&&prev!=='%')return prev;}
+  return '%';
 }
-function collectDOM(){
+
+function buildParteRow(){}
+
+function collectPartes(){
   const s=songs[editIdx];
-  document.querySelectorAll('.crow').forEach(w=>{
-    const si=+w.dataset.si,ci=+w.dataset.ci,comp=s.sections[si]?.compases[ci];if(!comp)return;
-    const li=w.querySelector('[data-f="lyric"]');if(li)comp.lyric=li.value;
-    w.querySelectorAll('.tinp').forEach(i=>{comp.times[+i.dataset.t]=i.value.trim();});
+  document.querySelectorAll('#panelPartes .tinp').forEach(inp=>{
+    const letra=inp.dataset.letra,ci=+inp.dataset.ci,t=+inp.dataset.t;
+    if(!letra||isNaN(ci)||isNaN(t)||!s.partes[letra]||!s.partes[letra][ci])return;
+    const comp=normCompas(s.partes[letra][ci]);
+    comp.times[t]=inp.value.trim();
+    s.partes[letra][ci]=comp;
   });
 }
-function addC(si){collectDOM();songs[editIdx].sections[si].compases.push(mkC(songs[editIdx].sig));renderStruct();}
-function delSec(si){const sc=songs[editIdx].sections;if(sc.length<=1){alert('Mínimo 1.');return;}sc.splice(si,1);renderStruct();}
-function renSec(si){
-  promptIm('Renombrar sección',songs[editIdx].sections[si].name,v=>{collectDOM();songs[editIdx].sections[si].name=v;renderStruct();});
+
+function addCompas(letra){
+  collectPartes();
+  const idx=songs[editIdx].partes[letra].length;
+  songs[editIdx].partes[letra].push({times:['','','',''],reps:1});
+  activeCompas=letra+'-'+idx;
+  renderPartes();
 }
-function addSec(){promptIm('Nueva sección','',v=>{collectDOM();songs[editIdx].sections.push({name:v,compases:[mkC(songs[editIdx].sig)]});renderStruct();});}
-function doneStruct(){collectDOM();save();renderSongs();show('sHome');}
+
+function addParte(){
+  const s=songs[editIdx];
+  const existing=Object.keys(s.partes);
+  // Find next available letter
+  let letra='A';
+  for(let i=0;i<26;i++){
+    const l=String.fromCharCode(65+i);
+    if(!existing.includes(l)){letra=l;break;}
+    // Also try Abis, Bbis etc
+    if(!existing.includes(l+'bis')){letra=l+'bis';break;}
+  }
+  promptIm('Nombre de la parte', letra, v=>{
+    collectPartes();
+    songs[editIdx].partes[v]=[{times:['','','',''],reps:1}];
+    renderPartes();
+  });
+}
+
+function addCompas(letra){
+  collectPartes();
+  songs[editIdx].partes[letra].push(['','','','']);
+  renderPartes();
+}
+
+function deleteParte(letra){
+  if(!confirm('¿Eliminar parte '+letra+'?')) return;
+  collectPartes();
+  delete songs[editIdx].partes[letra];
+  // Remove from estructura too
+  songs[editIdx].estructura=songs[editIdx].estructura.filter(e=>e.parte!==letra);
+  renderPartes();
+}
+
+function insertPct(){
+  if(cpTgt){ cpTgt.value='%'; cpTgt.style.color='#c96a4a'; cpTgt.dispatchEvent(new Event('input')); hideCP(); }
+}
+
+// ── ESTRUCTURA ────────────────────────────────────
+function renderEstructura(){
+  const s=songs[editIdx];
+  const el=document.getElementById('panelEstr');
+  el.innerHTML='';
+  const parteKeys=Object.keys(s.partes);
+  if(!parteKeys.length){
+    el.innerHTML='<div style="font-family:DM Mono,monospace;font-size:.65rem;color:#5c544c;padding:20px;text-align:center;">Primero creá las partes (tab PARTES)</div>';
+    return;
+  }
+  s.estructura.forEach((sec,i)=>{
+    const blk=document.createElement('div');
+    blk.style.cssText='background:#1e1a17;border:1px solid #2e2825;border-radius:6px;padding:10px 12px;margin-bottom:8px;display:flex;flex-direction:column;gap:7px;';
+    // Row 1: nombre + parte + reps
+    const r1=document.createElement('div');r1.style.cssText='display:flex;align-items:center;gap:8px;';
+    // Nombre
+    const ninp=document.createElement('input');ninp.type='text';ninp.className='inp';
+    ninp.value=sec.nombre;ninp.placeholder='Intro, Estrofa, Coro...';ninp.style.cssText='flex:1;font-size:.85rem;padding:5px 8px;';
+    ninp.oninput=()=>{sec.nombre=ninp.value;};
+    // Parte selector
+    const psel=document.createElement('select');psel.className='inp';psel.style.cssText='width:70px;padding:5px 4px;font-family:DM Mono,monospace;font-size:.8rem;';
+    parteKeys.forEach(k=>{const op=document.createElement('option');op.value=k;op.textContent=k;if(k===sec.parte)op.selected=true;psel.appendChild(op);});
+    psel.onchange=()=>{sec.parte=psel.value;};
+    // Reps
+    const rlbl=document.createElement('span');rlbl.style.cssText='font-family:DM Mono,monospace;font-size:.6rem;color:#5c544c;white-space:nowrap;';rlbl.textContent='×';
+    const rinp=document.createElement('input');rinp.type='number';rinp.className='inp';
+    rinp.value=sec.reps||1;rinp.min=1;rinp.max=16;rinp.style.cssText='width:46px;padding:5px 4px;font-family:Bebas Neue,sans-serif;font-size:1rem;text-align:center;';
+    rinp.oninput=()=>{sec.reps=parseInt(rinp.value)||1;};
+    // Delete btn
+    const db=document.createElement('button');db.className='xs del';db.textContent='✕';
+    db.onclick=()=>{s.estructura.splice(i,1);renderEstructura();};
+    r1.appendChild(ninp);r1.appendChild(psel);r1.appendChild(rlbl);r1.appendChild(rinp);r1.appendChild(db);
+    blk.appendChild(r1);
+    // Row 2: observación
+    const oinp=document.createElement('input');oinp.type='text';oinp.className='inp';
+    oinp.value=sec.obs||'';oinp.placeholder='Observación (ej: voz + bajo, solo, todos...)';
+    oinp.style.cssText='font-size:.75rem;padding:4px 8px;color:#b8b0a4;font-family:DM Mono,monospace;';
+    oinp.oninput=()=>{sec.obs=oinp.value;};
+    blk.appendChild(oinp);
+    el.appendChild(blk);
+  });
+}
+
+function addEstrSec(){
+  const s=songs[editIdx];
+  const parteKeys=Object.keys(s.partes);
+  if(!parteKeys.length){alert('Primero creá las partes.');seTab('partes');return;}
+  s.estructura.push({nombre:'Nueva sección',parte:parteKeys[0],reps:1,obs:''});
+  renderEstructura();
+}
+
+function doneStruct(){collectPartes();save();renderSongs();show('sHome');}
+
 
 // ═══════════════════════════════════════════════════
 // CC EDITOR
@@ -1088,14 +1347,98 @@ const FS=[
 function getCPP(){return[6,5,5,4,3,2][rFi];}
 function getLPP(){return[22,20,18,14,10,8][rFi];}
 
-function buildFlat(){
-  rFlat=[];
-  (rSong.sections||[]).forEach(sec=>{
-    (sec.compases||[]).forEach(c=>rFlat.push({secName:sec.name,...c}));
-  });
+function buildFlat(){ /* not used in new model */ rFlat=[]; }
+
+function resolvePercent(s, letra, ci, ti, ch){
+  if(ch!=='%') return ch||'—';
+  const parte=s.partes[letra];
+  if(ci>0 && parte[ci-1]){
+    const prev=parte[ci-1][ti];
+    if(prev && prev!=='%') return prev;
+    return resolvePercent(s,letra,ci-1,ti,prev||'%');
+  }
+  if(ti>0){ const prev=parte[ci][ti-1]; if(prev && prev!=='%') return prev; }
+  return '%';
 }
 
-// ─── OPEN ─────────────────────────────────────────
+function renderAllGrid(){
+  const s=rSong;
+  if(!s.partes||!s.estructura||!Object.keys(s.partes).length){
+    document.getElementById('rContent').innerHTML='<div style="padding:20px;color:#5c544c;font-family:DM Mono,monospace;font-size:.7rem;text-align:center;">Sin estructura.<br>Editá la canción para agregar partes.</div>';
+    return;
+  }
+
+  const fs=FS[rFi];
+  // Scale pill font based on reader font size setting
+  const chordSize = fs.ch;
+  let html='';
+
+  // ── PARTES REFERENCE (top, compact) ─────────────
+  html+=`<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #2e2825;">`;
+  html+=`<div style="font-family:'DM Mono',monospace;font-size:.5rem;color:#5c544c;letter-spacing:2px;margin-bottom:10px;">PARTES</div>`;
+  Object.entries(s.partes).forEach(([letra,compases])=>{
+    html+=`<div style="margin-bottom:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">`;
+    html+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;color:#c96a4a;letter-spacing:2px;flex-shrink:0;min-width:32px;">${esc(letra)}</span>`;
+    compases.forEach((rawC,ci)=>{
+      const comp=normCompas(rawC);
+      const times=comp.times; const reps=comp.reps||1;
+      const resolved=times.map((ch,ti)=>resolvePercent(s,letra,ci,ti,ch));
+      const groups=compressCompas(times,resolved);
+      html+=`<div style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;background:#161311;border:1px solid #2e2825;border-radius:6px;">`;
+      groups.forEach((g,gi)=>{
+        const t=transposeChord(g.ch,rT);
+        const isRep=g.orig==='%';
+        if(gi>0) html+=`<span style="color:#3a332e;font-size:.8rem;padding:0 1px;"> — </span>`;
+        html+=`<span style="font-family:'DM Mono',monospace;font-size:${chordSize};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};">${esc(t)}</span>`;
+      });
+      if(reps>1) html+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.8rem;color:#c96a4a;margin-left:2px;">×${reps}</span>`;
+      html+=`</div>`;
+    });
+    html+=`</div>`;
+  });
+  html+=`</div>`;
+
+  // ── ESTRUCTURA ───────────────────────────────────
+  html+=`<div style="font-family:'DM Mono',monospace;font-size:.5rem;color:#5c544c;letter-spacing:2px;margin-bottom:10px;">ESTRUCTURA</div>`;
+  s.estructura.forEach(sec=>{
+    const parte=s.partes[sec.parte];
+    if(!parte) return;
+
+    // Section header
+    html+=`<div style="margin-bottom:10px;">`;
+    html+=`<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;">`;
+    html+=`<span style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.1rem;color:#c96a4a;">${esc(sec.nombre)}</span>`;
+    if((sec.reps||1)>1) html+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:#e8896a;letter-spacing:1px;">×${sec.reps}</span>`;
+    html+=`<span style="font-family:'DM Mono',monospace;font-size:.55rem;color:#3a332e;">— ${esc(sec.parte)}</span>`;
+    html+=`</div>`;
+
+    // Compases — big pills like the editor
+    html+=`<div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 0;">`;
+    parte.forEach((rawC,ci)=>{
+      const comp=normCompas(rawC);
+      const times=comp.times; const reps=comp.reps||1;
+      const resolved=times.map((ch,ti)=>resolvePercent(s,sec.parte,ci,ti,ch));
+      const groups=compressCompas(times,resolved);
+      html+=`<div style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;background:#161311;border:2px solid #2e2825;border-radius:8px;">`;
+      groups.forEach((g,gi)=>{
+        const t=transposeChord(g.ch,rT);
+        const isRep=g.orig==='%';
+        if(gi>0) html+=`<span style="color:#3a332e;font-size:.85rem;"> — </span>`;
+        html+=`<span style="font-family:'DM Mono',monospace;font-size:${chordSize};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};">${esc(t)}</span>`;
+      });
+      if(reps>1) html+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:#c96a4a;margin-left:2px;">×${reps}</span>`;
+      html+=`</div>`;
+    });
+    html+=`</div>`;
+
+    // Observación
+    if(sec.obs) html+=`<div style="font-family:'DM Mono',monospace;font-size:.68rem;color:#b8b0a4;font-style:italic;padding:2px 4px 8px;">${esc(sec.obs)}</div>`;
+    html+=`<div style="height:1px;background:#1e1a17;margin-bottom:4px;"></div>`;
+    html+=`</div>`;
+  });
+
+  document.getElementById('rContent').innerHTML=html;
+}
 function openReader(idx,sl,pos){
   stopPlay(); stopScroll();
   prevScreen=document.querySelector('.scr.on').id;
@@ -1299,25 +1642,7 @@ function animProg(){
 //   setInterval increments rMid.scrollTop
 //   This is the simplest possible approach and guaranteed to work.
 
-function renderAllGrid(){
-  const ls=FS[rFi].ly;
-  let html='',lastSec=null;
-  rFlat.forEach((c,gi)=>{
-    if(c.secName!==lastSec){html+=`<div class="r-sechdr">${esc(c.secName)}</div>`;lastSec=c.secName;}
-    const sig=c.sig||4;
-    html+=`<div class="r-compas" id="rc${gi}">`;
-    html+=`<div class="r-chords t${sig}">`;
-    for(let t=0;t<sig;t++){const ch=transposeChord((c.times&&c.times[t])||'',rT);html+=`<div class="r-cell"><div class="r-tnum">T${t+1}</div><div class="r-chord${ch?'':' empty'}">${ch?esc(ch):'—'}</div></div>`;}
-    html+=`</div>`;
-    const ly=c.lyric||'';
-    html+=`<div class="r-lyric${ly?'':' hide'}" style="font-size:${ls}">${esc(ly)}</div>`;
-    html+=`<div class="r-prog"><div class="r-fill" id="rf${gi}"></div></div>`;
-    html+=`</div>`;
-  });
-  document.getElementById('rContent').innerHTML=html;
-}
-
-// ─── AUTOSCROLL ───────────────────────────────────
+// ─── OPEN ─────────────────────────────────────────
 let scrollSpeedMult = 1; // current multiplier
 
 function stopScroll(){
@@ -1417,77 +1742,14 @@ function rerender(){
 // DEMO DATA
 // ═══════════════════════════════════════════════════
 function demo(){
-  if(songs.length)return;
-  songs=[
-    {id:'d1',title:'Bring It On Down',artist:'Oasis',sig:4,bpm:138,slIds:[0],sections:[
-      {name:'Intro',compases:[
-        {lyric:'',sig:4,times:['Bm','Bm','Bm','Bm']},
-        {lyric:'',sig:4,times:['D','E','D','Bm']},
-      ]},
-      {name:'Verso',compases:[
-        {lyric:"What was that sound ringing around your brain?",sig:4,times:['Bm','Bm','Bm','Bm']},
-        {lyric:"Today is just a blur, you got a head like a ghost train",sig:4,times:['D','E','D','Bm']},
-        {lyric:"You're the outcast, you're the underclass",sig:4,times:['Bm','Bm','D','A']},
-        {lyric:"But you don't care because you're living fast",sig:4,times:['Bm','Bm','D','A']},
-      ]},
-      {name:'Estribillo',compases:[
-        {lyric:"You're the uninvited guest who stays till the end",sig:4,times:['Bm','D','G','E']},
-        {lyric:"I know you've got a problem that the devil sends",sig:4,times:['Bm','D','G','E']},
-        {lyric:"I'll be scraping your life from the sole of my shoe tonight",sig:4,times:['Bm','D','G','E']},
-      ]},
-    ]},
-    {id:'d2',type:'cc',title:'Live Forever',artist:'Oasis',bpm:68,sig:4,slIds:[0],textContent:`[Verse 1]
+  // No demo data — users start fresh
+}
 
-G               D
-Maybe I don't really want to know
-         Am
-How your garden grows
-  C             D
-As I just want to fly
-G               D
-Lately did you ever feel the pain
-         Am
-In the morning rain
-  C                    D
-As it soaks you to the bone
-
-
-[Chorus 1]
-
-Em                   D
-Maybe I just want to fly
-                           Am
-Wanna live, I don't want to die
-                     C
-Maybe I just want to breathe
-      D            Em
-Maybe I just don't believe
-                       D
-Maybe you're the same as me
-                           Am
-We see things they'll never see
-                           Fadd9
-You and I, we're gonna live forever
-
-
-[Solo]
-
-G D Am C D x2
-Em D Am Fadd9
-
-
-[Outro]
-
-           FM7           Am
-Gonna live forever
-           FM7           Am
-Gonna live forever
-
-Am   FM7
-(Repeat until fade)`},
-  ];
-  sets=[{name:'Up in the Sky — Set 1',songIds:[0,1]}];
-  save();
+function usarSinCuenta(){
+  // Skip cloud sync, use localStorage only
+  load(); demo(); renderSongs(); renderSets(); buildCP();
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
+  document.getElementById('sHome').classList.add('on');
 }
 
 async function doLogin(){
