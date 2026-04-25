@@ -511,9 +511,12 @@ async function checkSession(){
   if(hash.includes('access_token')){
     const params = new URLSearchParams(hash.slice(1));
     const token = params.get('access_token');
+    const refresh = params.get('refresh_token');
     if(token){
       localStorage.setItem('cb_token', token);
-      window.location.hash = '';
+      if(refresh) localStorage.setItem('cb_refresh', refresh);
+      // Clean URL without reload
+      history.replaceState(null, '', window.location.pathname);
     }
   }
   const token = localStorage.getItem('cb_token');
@@ -524,7 +527,25 @@ async function checkSession(){
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token}
     });
     if(res.ok){ currentUser = await res.json(); return true; }
-    else{ localStorage.removeItem('cb_token'); return false; }
+    // Try refresh
+    const refresh = localStorage.getItem('cb_refresh');
+    if(refresh){
+      const r2 = await fetch(SUPA_URL+'/auth/v1/token?grant_type=refresh_token',{
+        method:'POST',
+        headers:{'apikey':SUPA_KEY,'Content-Type':'application/json'},
+        body: JSON.stringify({refresh_token:refresh})
+      });
+      if(r2.ok){
+        const data=await r2.json();
+        localStorage.setItem('cb_token',data.access_token);
+        if(data.refresh_token) localStorage.setItem('cb_refresh',data.refresh_token);
+        currentUser=data.user;
+        return true;
+      }
+    }
+    localStorage.removeItem('cb_token');
+    localStorage.removeItem('cb_refresh');
+    return false;
   }catch{ return false; }
 }
 
