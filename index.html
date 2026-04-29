@@ -178,6 +178,8 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
 .tapbtn{background:none;border:1px solid #2e2825;color:#5c544c;padding:3px 10px;border-radius:20px;font-family:'DM Mono',monospace;font-size:.55rem;cursor:pointer;}
 .playbtn{background:#c96a4a;color:#0e0c0b;border:none;width:36px;height:36px;border-radius:50%;font-size:.95rem;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .playbtn.active{background:#4a9c6a;}
+.pinbox{width:56px;height:64px;background:#1e1a17;border:2px solid #2e2825;border-radius:10px;color:#f0ebe3;font-family:'Bebas Neue',sans-serif;font-size:2rem;text-align:center;outline:none;-webkit-appearance:none;}
+.pinbox:focus{border-color:#c96a4a;}
 .spdBtn{background:none;border:1px solid #2e2825;color:#5c544c;padding:3px 7px;border-radius:20px;font-family:'DM Mono',monospace;font-size:.58rem;cursor:pointer;white-space:nowrap;}
 .spdBtn.on{background:#c96a4a;border-color:#c96a4a;color:#0e0c0b;}
 
@@ -214,19 +216,36 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
 
 <!-- LOGIN -->
 <div id="sLogin" class="scr on" style="justify-content:center;align-items:center;padding:32px;">
-  <div style="width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:24px;">
+  <div style="width:100%;max-width:300px;display:flex;flex-direction:column;align-items:center;gap:20px;">
     <div style="font-family:'Cormorant Garamond',serif;font-size:3rem;font-weight:600;color:#f0ebe3;text-align:center;">Chord<em style="color:#c96a4a;font-style:italic;">Book</em></div>
-    <div style="font-family:'DM Mono',monospace;font-size:.65rem;color:#5c544c;letter-spacing:2px;text-align:center;">TUS CANCIONES EN LA NUBE</div>
-    <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
+
+    <!-- Step 1: email -->
+    <div id="loginStep1" style="width:100%;display:flex;flex-direction:column;gap:10px;">
       <div style="font-family:'DM Mono',monospace;font-size:.6rem;color:#5c544c;letter-spacing:1px;">EMAIL</div>
-      <input id="loginEmail" type="email" placeholder="tu@email.com" style="background:#1e1a17;border:1px solid #2e2825;color:#f0ebe3;font-family:'DM Sans',sans-serif;font-size:.95rem;padding:12px 14px;border-radius:8px;width:100%;outline:none;" onfocus="this.style.borderColor='#c96a4a'" onblur="this.style.borderColor='#2e2825'"
-        onkeydown="if(event.key==='Enter')doLogin()">
-      <button onclick="doLogin()" style="background:#c96a4a;color:#0e0c0b;border:none;padding:13px;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;cursor:pointer;width:100%;">ENVIAR LINK DE ACCESO</button>
+      <input id="loginEmail" type="email" placeholder="tu@email.com"
+        style="background:#1e1a17;border:1px solid #2e2825;color:#f0ebe3;font-family:'DM Sans',sans-serif;font-size:.95rem;padding:12px 14px;border-radius:8px;width:100%;outline:none;"
+        onfocus="this.style.borderColor='#c96a4a'" onblur="this.style.borderColor='#2e2825'"
+        onkeydown="if(event.key==='Enter')goToPin()">
+      <button onclick="goToPin()" style="background:#c96a4a;color:#0e0c0b;border:none;padding:13px;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;cursor:pointer;width:100%;">CONTINUAR →</button>
     </div>
-    <div id="loginMsg" style="font-family:'DM Mono',monospace;font-size:.62rem;color:#5c544c;text-align:center;line-height:1.7;"></div>
-    <div style="font-family:'DM Mono',monospace;font-size:.55rem;color:#3a332e;text-align:center;line-height:1.8;">Te mandamos un link por email.<br>Sin contraseña, acceso seguro.</div>
-    <!-- Bypass: usar sin cuenta (datos solo en este dispositivo) -->
-    <button onclick="usarSinCuenta()" style="background:none;border:none;color:#3a332e;font-family:'DM Mono',monospace;font-size:.55rem;letter-spacing:1px;cursor:pointer;text-decoration:underline;margin-top:-8px;">usar sin cuenta (solo este dispositivo)</button>
+
+    <!-- Step 2: PIN -->
+    <div id="loginStep2" style="width:100%;display:flex;flex-direction:column;gap:10px;display:none;">
+      <div id="loginEmailDisp" style="font-family:'DM Mono',monospace;font-size:.65rem;color:#c96a4a;text-align:center;letter-spacing:1px;"></div>
+      <div style="font-family:'DM Mono',monospace;font-size:.6rem;color:#5c544c;letter-spacing:1px;" id="pinLabel">PIN (4 dígitos)</div>
+      <!-- 4 PIN boxes -->
+      <div style="display:flex;gap:10px;justify-content:center;">
+        <input type="tel" maxlength="1" id="pin0" class="pinbox" oninput="pinNext(0)" onkeydown="pinKey(event,0)">
+        <input type="tel" maxlength="1" id="pin1" class="pinbox" oninput="pinNext(1)" onkeydown="pinKey(event,1)">
+        <input type="tel" maxlength="1" id="pin2" class="pinbox" oninput="pinNext(2)" onkeydown="pinKey(event,2)">
+        <input type="tel" maxlength="1" id="pin3" class="pinbox" oninput="pinNext(3)" onkeydown="pinKey(event,3)">
+      </div>
+      <button onclick="doLogin()" id="loginBtn" style="background:#c96a4a;color:#0e0c0b;border:none;padding:13px;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;cursor:pointer;width:100%;">ENTRAR</button>
+      <button onclick="backToEmail()" style="background:none;border:none;color:#5c544c;font-family:'DM Mono',monospace;font-size:.6rem;cursor:pointer;letter-spacing:1px;">← cambiar email</button>
+    </div>
+
+    <div id="loginMsg" style="font-family:'DM Mono',monospace;font-size:.65rem;color:#c0392b;text-align:center;line-height:1.7;min-height:1em;"></div>
+    <button onclick="usarSinCuenta()" style="background:none;border:none;color:#3a332e;font-family:'DM Mono',monospace;font-size:.55rem;letter-spacing:1px;cursor:pointer;text-decoration:underline;">usar sin cuenta (solo este dispositivo)</button>
   </div>
 </div>
 
@@ -492,17 +511,106 @@ async function supaFetch(method, path, body){
   return res.status===204 ? null : res.json();
 }
 
-// ── Auth con Magic Link ──────────────────────────────
+// ── Auth con Email + PIN ─────────────────────────────
 let currentUser = null;
+let loginMode = 'login'; // 'login' or 'register'
 
-async function signInWithEmail(email){
-  const res = await fetch(SUPA_URL+'/auth/v1/otp', {
-    method:'POST',
-    headers:{'apikey':SUPA_KEY,'Content-Type':'application/json'},
-    body: JSON.stringify({email, create_user:true})
-  });
-  if(res.ok) alert('📧 Revisá tu email — te mandamos un link de acceso');
-  else alert('Error al enviar email');
+function goToPin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  if(!email || !email.includes('@')){ setLoginMsg('Ingresá tu email.'); return; }
+  setLoginMsg('');
+  document.getElementById('loginStep1').style.display='none';
+  document.getElementById('loginStep2').style.display='flex';
+  document.getElementById('loginStep2').style.flexDirection='column';
+  document.getElementById('loginEmailDisp').textContent=email;
+  setTimeout(()=>document.getElementById('pin0').focus(),100);
+}
+
+function backToEmail(){
+  document.getElementById('loginStep1').style.display='flex';
+  document.getElementById('loginStep1').style.flexDirection='column';
+  document.getElementById('loginStep2').style.display='none';
+  clearPin(); setLoginMsg('');
+}
+
+function getPin(){
+  return [0,1,2,3].map(i=>document.getElementById('pin'+i).value).join('');
+}
+function clearPin(){
+  [0,1,2,3].forEach(i=>{document.getElementById('pin'+i).value='';});
+}
+function pinNext(i){
+  const v=document.getElementById('pin'+i).value;
+  if(v && i<3) document.getElementById('pin'+(i+1)).focus();
+  if(getPin().length===4) document.getElementById('loginBtn').focus();
+}
+function pinKey(e,i){
+  if(e.key==='Backspace'&&!document.getElementById('pin'+i).value&&i>0){
+    document.getElementById('pin'+(i-1)).focus();
+  }
+  if(e.key==='Enter'&&getPin().length===4) doLogin();
+}
+function setLoginMsg(msg,color){
+  const el=document.getElementById('loginMsg');
+  el.textContent=msg;
+  el.style.color=color||'#c0392b';
+}
+
+async function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pin=getPin();
+  if(pin.length!==4){setLoginMsg('PIN de 4 dígitos.');return;}
+  const btn=document.getElementById('loginBtn');
+  btn.textContent='...';btn.disabled=true;
+  setLoginMsg('');
+  try{
+    // Try sign in first
+    const res=await fetch(SUPA_URL+'/auth/v1/token?grant_type=password',{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({email,password:pin})
+    });
+    const data=await res.json();
+    if(res.ok && data.access_token){
+      localStorage.setItem('cb_token',data.access_token);
+      if(data.refresh_token) localStorage.setItem('cb_refresh',data.refresh_token);
+      currentUser=data.user;
+      await afterLogin();
+    } else {
+      // If login fails, try register
+      const res2=await fetch(SUPA_URL+'/auth/v1/signup',{
+        method:'POST',
+        headers:{'apikey':SUPA_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({email,password:pin})
+      });
+      const data2=await res2.json();
+      if(res2.ok && data2.access_token){
+        localStorage.setItem('cb_token',data2.access_token);
+        if(data2.refresh_token) localStorage.setItem('cb_refresh',data2.refresh_token);
+        currentUser=data2.user;
+        await afterLogin();
+      } else if(res2.ok && !data2.access_token){
+        // Email confirmation required - unlikely since we turned it off
+        setLoginMsg('Revisá tu email para confirmar.','#4a9c6a');
+      } else {
+        const errMsg=data2.msg||data2.message||data2.error_description||'PIN incorrecto.';
+        setLoginMsg(errMsg);
+        clearPin();document.getElementById('pin0').focus();
+      }
+    }
+  } catch(e){
+    setLoginMsg('Error de conexión.');
+  }
+  btn.textContent='ENTRAR';btn.disabled=false;
+}
+
+async function afterLogin(){
+  await cloudLoad();
+  renderSongs();renderSets();buildCP();
+  const disp=document.getElementById('userDisp');
+  if(disp) disp.textContent='☁ '+(currentUser.email||'').split('@')[0];
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
+  document.getElementById('sHome').classList.add('on');
 }
 
 async function checkSession(){
@@ -1767,56 +1875,24 @@ function demo(){
 }
 
 function usarSinCuenta(){
-  // Skip cloud sync, use localStorage only
-  load(); demo(); renderSongs(); renderSets(); buildCP();
+  load(); renderSongs(); renderSets(); buildCP();
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
   document.getElementById('sHome').classList.add('on');
 }
 
-async function doLogin(){
-  const email = document.getElementById('loginEmail').value.trim();
-  if(!email){ alert('Ingresá tu email'); return; }
-  const msg = document.getElementById('loginMsg');
-  msg.textContent = 'Enviando...';
-  try{
-    await signInWithEmail(email);
-    msg.textContent = '✓ Revisá tu bandeja de entrada — hacé click en el link para acceder.';
-  }catch(e){
-    msg.textContent = 'Error: '+e.message;
-  }
-}
-
 function showSyncStatus(){
   const email = currentUser?.email || 'sin sesión';
-  alert('☁ Cuenta: '+email+'\nTus datos están guardados en la nube.\n\nPara cerrar sesión: borrá el storage del browser.');
+  alert('☁ '+email+'\nDatos guardados en la nube.');
 }
 
 async function init(){
-  // Load local cache immediately so app feels fast
   load();
-  // Check if logged in
   const loggedIn = await checkSession();
   if(loggedIn){
-    // Sync from cloud (may update local data)
-    await cloudLoad();
-    demo();
-    renderSongs(); renderSets(); buildCP();
-    // Show user email
-    const disp = document.getElementById('userDisp');
-    if(disp) disp.textContent = '☁ ' + (currentUser.email||'').split('@')[0];
-    // Show home (not login)
-    document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
-    document.getElementById('sHome').classList.add('on');
+    await afterLogin();
   } else {
-    // Show login screen
     document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
     document.getElementById('sLogin').classList.add('on');
-    // If no Supabase configured yet, go straight to home
-    if(SUPA_URL === 'TU_SUPABASE_URL'){
-      load(); demo(); renderSongs(); renderSets(); buildCP();
-      document.getElementById('sLogin').classList.remove('on');
-      document.getElementById('sHome').classList.add('on');
-    }
   }
 }
 
