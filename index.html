@@ -260,7 +260,8 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
   <div class="topbar" style="justify-content:space-between;">
     <div class="logo">Chord<em>Book</em></div>
     <div style="display:flex;gap:8px;align-items:center;">
-      <span id="userDisp" style="font-family:'DM Mono',monospace;font-size:.5rem;color:#5c544c;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" onclick="showSyncStatus()" title="Sincronizado con la nube">☁</span>
+      <span id="userDisp" style="font-family:'DM Mono',monospace;font-size:.5rem;color:#5c544c;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">☁</span>
+      <button onclick="logout()" id="logoutBtn" style="display:none;background:none;border:1px solid #2e2825;color:#5c544c;font-family:'DM Mono',monospace;font-size:.5rem;padding:3px 7px;border-radius:20px;cursor:pointer;letter-spacing:1px;">salir</button>
       <button class="btn btn-ghost" onclick="showImport()">↓ import</button>
       <button class="btn btn-ghost terra" onclick="showCC()">CC</button>
       <button class="btn btn-round" onclick="showMeta()">+</button>
@@ -618,8 +619,28 @@ async function afterLogin(){
   renderSongs();renderSets();buildCP();
   const disp=document.getElementById('userDisp');
   if(disp) disp.textContent='☁ '+(currentUser.email||'').split('@')[0];
+  const lb=document.getElementById('logoutBtn');
+  if(lb) lb.style.display='';
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
   document.getElementById('sHome').classList.add('on');
+}
+
+function logout(){
+  if(!confirm('¿Cerrar sesión?')) return;
+  localStorage.removeItem('cb_token');
+  localStorage.removeItem('cb_refresh');
+  localStorage.removeItem('cb_s');
+  localStorage.removeItem('cb_l');
+  currentUser=null; songs=[];sets=[];
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
+  document.getElementById('sLogin').classList.add('on');
+  document.getElementById('userDisp').textContent='☁';
+  document.getElementById('logoutBtn').style.display='none';
+  document.getElementById('loginStep1').style.cssText='display:flex;flex-direction:column;';
+  document.getElementById('loginStep2').style.display='none';
+  clearPin();
+  document.getElementById('loginEmail').value='';
+  setLoginMsg('');
 }
 
 async function checkSession(){
