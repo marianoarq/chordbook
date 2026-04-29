@@ -283,6 +283,31 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
   <div class="scrollarea" id="slList"></div>
 </div>
 
+<!-- SETLIST DETAIL -->
+<div id="sSlDetail" class="scr">
+  <div class="ed-hdr">
+    <button class="btn-back" onclick="back()">←</button>
+    <div class="ed-title" id="slDetailTitle" style="color:#4a9c6a;"></div>
+    <button class="icobtn" onclick="showSlEd(currentSlIdx)">✎</button>
+  </div>
+  <div class="scrollarea" id="slDetailList" style="padding-bottom:100px;"></div>
+  <!-- START GIG button fixed at bottom -->
+  <div style="position:absolute;bottom:0;left:0;right:0;padding:12px 16px;background:linear-gradient(transparent,#0e0c0b 40%);">
+    <button onclick="startGig()" style="width:100%;padding:18px;background:#4a9c6a;border:none;border-radius:10px;font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:3px;color:#0e0c0b;cursor:pointer;">▶ START GIG!</button>
+  </div>
+</div>
+
+<!-- SETLIST OVERLAY (during reader) -->
+<div id="slOverlay" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.95);display:none;flex-direction:column;">
+  <div style="padding:14px 16px;border-bottom:1px solid #2e2825;flex-shrink:0;">
+    <div id="slOverlayTitle" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:#4a9c6a;letter-spacing:2px;"></div>
+  </div>
+  <div id="slOverlayList" style="flex:1;overflow-y:auto;padding:10px 14px;"></div>
+  <div style="padding:12px 16px;flex-shrink:0;">
+    <button onclick="closeSlOverlay()" style="width:100%;padding:16px;background:#2e2825;border:none;border-radius:10px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:3px;color:#f0ebe3;cursor:pointer;">✕ CERRAR</button>
+  </div>
+</div>
+
 <!-- META ED -->
 <div id="sMeta" class="scr">
   <div class="ed-hdr">
@@ -432,6 +457,8 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
         <div class="tdisp" id="fDisp">MED</div>
         <button class="tbtn" onclick="adjF(1)">A+</button>
       </div>
+      <div class="tsep"></div>
+      <button id="expandSlBtn" onclick="openSlOverlay()" style="display:none;background:none;border:1px solid #2e2825;color:#5c544c;padding:3px 9px;border-radius:20px;font-family:'DM Mono',monospace;font-size:.52rem;letter-spacing:1px;cursor:pointer;white-space:nowrap;">☰ SET</button>
     </div>
     <div class="tempobar">
       <!-- BPM + Capo display -->
@@ -1326,9 +1353,45 @@ function saveSl(){
   songs.forEach((s,si)=>{if(!s.slIds)s.slIds=[];if(songIds.includes(si)){if(!s.slIds.includes(slEditIdx))s.slIds.push(slEditIdx);}else s.slIds=s.slIds.filter(x=>x!==slEditIdx);});
   save();back();
 }
-function openSetReader(idx){
-  const sl=sets[idx];if(!sl?.songIds?.length){alert('Sin canciones.');return;}
-  openReader(sl.songIds[0],sl,0);
+let currentSlIdx = -1;
+
+function openSetReader(idx){ showSlDetail(idx); }
+
+function showSlDetail(idx){
+  currentSlIdx = idx;
+  prevScreen = document.querySelector('.scr.on').id;
+  const sl = sets[idx];
+  document.getElementById('slDetailTitle').textContent = sl.name;
+  const el = document.getElementById('slDetailList');
+  el.innerHTML = '';
+  const capoLabels=['','1st','2nd','3rd','4th','5th','6th','7th'];
+  (sl.songIds||[]).forEach((si,pos)=>{
+    const s = songs[si]; if(!s) return;
+    const capo = s.capo||0;
+    const d = document.createElement('div');
+    d.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid #1e1a17;cursor:pointer;';
+    d.innerHTML=`<span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:#4a9c6a;min-width:26px;">${pos+1}</span>
+      <div style="flex:1;">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:1.15rem;font-weight:600;color:#f0ebe3;">${esc(s.title)}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:.58rem;color:#5c544c;">${esc(s.artist||'—')} · ${s.bpm||120}bpm${s.type==='cc'?' · CC':''}</div>
+      </div>
+      ${capo>0?`<span style="font-family:'DM Mono',monospace;font-size:.58rem;background:#2e2825;color:#e8896a;padding:2px 7px;border-radius:10px;flex-shrink:0;">CAPO ${capoLabels[capo]}</span>`:''}`;
+    d.onclick=()=>{ startGigFrom(pos); };
+    el.appendChild(d);
+  });
+  show('sSlDetail');
+}
+
+function startGig(){
+  const sl = sets[currentSlIdx];
+  if(!sl?.songIds?.length){alert('Sin canciones.');return;}
+  openReader(sl.songIds[0], sl, 0);
+}
+
+function startGigFrom(pos){
+  const sl = sets[currentSlIdx];
+  if(!sl?.songIds?.length) return;
+  openReader(sl.songIds[pos], sl, pos);
 }
 
 // ═══════════════════════════════════════════════════
@@ -1645,14 +1708,46 @@ function openReader(idx,sl,pos){
 
   const nav=document.getElementById('rSlNav');
   if(rSetlist){nav.classList.add('on');updateSlNav();}else nav.classList.remove('on');
+  // Show ☰ SET button only when in a setlist
+  const esb=document.getElementById('expandSlBtn');
+  if(esb) esb.style.display=rSetlist?'':'none';
   updateNavBtns();
   show('sReader');
 }
-function openSetReader(idx){
-  const sl=sets[idx];if(!sl?.songIds?.length){alert('Sin canciones.');return;}
-  openReader(sl.songIds[0],sl,0);
+
+function exitReader(){stopPlay();stopScroll();closeSlOverlay();back();}
+function openSlOverlay(){
+  if(!rSetlist) return;
+  const sl = rSetlist;
+  document.getElementById('slOverlayTitle').textContent = sl.name;
+  const el = document.getElementById('slOverlayList');
+  el.innerHTML = '';
+  const capoLabels=['','1st','2nd','3rd','4th','5th','6th','7th'];
+  (sl.songIds||[]).forEach((si,pos)=>{
+    const s = songs[si]; if(!s) return;
+    const capo = s.capo||0;
+    const isCurrent = pos === rSetPos;
+    const d = document.createElement('div');
+    d.style.cssText=`display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #1e1a17;${isCurrent?'background:#1e1a17;border-radius:6px;':''}`;
+    d.innerHTML=`<span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:${isCurrent?'#c96a4a':'#4a9c6a'};min-width:26px;">${pos+1}</span>
+      <div style="flex:1;">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:1.15rem;font-weight:600;color:${isCurrent?'#c96a4a':'#f0ebe3'};">${esc(s.title)}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:.58rem;color:#5c544c;">${esc(s.artist||'—')}${s.bpm?' · '+s.bpm+'bpm':''}</div>
+      </div>
+      ${capo>0?`<span style="font-family:'DM Mono',monospace;font-size:.58rem;background:#2e2825;color:#e8896a;padding:2px 7px;border-radius:10px;flex-shrink:0;">CAPO ${capoLabels[capo]}</span>`:''}`;
+    el.appendChild(d);
+  });
+  // Scroll to current song
+  document.getElementById('slOverlay').style.display='flex';
+  setTimeout(()=>{
+    const items=el.children;
+    if(items[rSetPos]) items[rSetPos].scrollIntoView({block:'center'});
+  },50);
 }
-function exitReader(){stopPlay();stopScroll();back();}
+
+function closeSlOverlay(){
+  document.getElementById('slOverlay').style.display='none';
+}
 function updateSlNav(){
   const sl=rSetlist, tot=sl.songIds.length;
   document.getElementById('snavInfo').textContent=sl.name;
