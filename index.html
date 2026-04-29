@@ -260,7 +260,7 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
   <div class="topbar" style="justify-content:space-between;">
     <div class="logo">Chord<em>Book</em></div>
     <div style="display:flex;gap:8px;align-items:center;">
-      <span id="userDisp" style="font-family:'DM Mono',monospace;font-size:.5rem;color:#5c544c;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">☁</span>
+      <span id="userDisp" onclick="showSyncStatus()" style="font-family:'DM Mono',monospace;font-size:.5rem;color:#5c544c;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" title="Estado de sincronización">☁</span>
       <button onclick="logout()" id="logoutBtn" style="display:none;background:none;border:1px solid #2e2825;color:#5c544c;font-family:'DM Mono',monospace;font-size:.5rem;padding:3px 7px;border-radius:20px;cursor:pointer;letter-spacing:1px;">salir</button>
       <button class="btn btn-ghost" onclick="showImport()">↓ import</button>
       <button class="btn btn-ghost terra" onclick="showCC()">CC</button>
@@ -500,11 +500,12 @@ const SUPA_KEY = 'sb_publishable_KJ9ZaLVDHCJxEtV9dwDmQA_Yo-IIFSy'; // ej: eyJhbG
 
 // ── Supabase client mínimo (sin SDK, fetch directo) ──
 async function supaFetch(method, path, body){
+  const token = localStorage.getItem('cb_token') || SUPA_KEY;
   const res = await fetch(SUPA_URL+'/rest/v1/'+path, {
     method,
     headers:{
       'apikey': SUPA_KEY,
-      'Authorization': 'Bearer '+SUPA_KEY,
+      'Authorization': 'Bearer '+token,
       'Content-Type': 'application/json',
       'Prefer': method==='POST'?'resolution=merge-duplicates':'',
     },
@@ -1334,7 +1335,7 @@ function openSetReader(idx){
 // IMPORT
 // ═══════════════════════════════════════════════════
 function showImport(){prevScreen=document.querySelector('.scr.on').id;show('sImport');}
-const CREX=/^[A-G][#b]?((maj|min|m|M)(7|9|11|13)?|sus[24]?|aug|dim7?|add(9|11|13|#11|\d+)|6\/9|6|9|11|13|(#|b)(5|9|11)|\/[A-G][#b]?)*$|^[Nn]\.?[Cc]\.?$/;
+const CREX=/^[A-G][#b]?((maj|min|m|M)(7|9|11|13)?|sus[24]?|aug|dim7?|add(9|11|13|#11|\d+)|6\/9|\d+(\.\d+)?|(#|b)(5|9|11)|\/[A-G][#b]?)*$|^[Nn]\.?[Cc]\.?$/;
 function isCh(t){return CREX.test(t);}
 function isChLine(l){if(!l.trim())return false;const tk=l.trim().split(/\s+/);return tk.filter(t=>isCh(t)).length/tk.length>=0.6;}
 function runImport(){
@@ -1915,8 +1916,32 @@ function usarSinCuenta(){
 }
 
 function showSyncStatus(){
-  const email = currentUser?.email || 'sin sesión';
-  alert('☁ '+email+'\nDatos guardados en la nube.');
+  const token=localStorage.getItem('cb_token');
+  const email=currentUser?.email||'sin sesión';
+  const nSongs=songs.length;
+  const nSets=sets.length;
+  const sinCuenta=!token&&!currentUser;
+  let msg=`CUENTA: ${email}\n`;
+  msg+=`TOKEN: ${token?'OK ✓':'AUSENTE ✗'}\n`;
+  msg+=`CANCIONES LOCALES: ${nSongs}\n`;
+  msg+=`SETLISTS LOCALES: ${nSets}\n`;
+  if(sinCuenta) msg+='\n⚠ Modo sin cuenta — los datos no se sincronizan.';
+  else msg+='\nTocá OK para forzar sincronización con la nube.';
+  if(confirm(msg)) forcSync();
+}
+
+async function forcSync(){
+  if(!currentUser){alert('No estás logueado con cuenta.');return;}
+  try{
+    // Push local to cloud
+    await cloudSave();
+    // Pull from cloud
+    await cloudLoad();
+    renderSongs();renderSets();
+    alert('✓ Sincronizado. Canciones en la nube: '+songs.length);
+  }catch(e){
+    alert('Error: '+e.message);
+  }
 }
 
 async function init(){
