@@ -566,7 +566,7 @@ async function doLogin(){
   btn.textContent='...';btn.disabled=true;
   setLoginMsg('');
   try{
-    // Try sign in first
+    // Try sign in
     const res=await fetch(SUPA_URL+'/auth/v1/token?grant_type=password',{
       method:'POST',
       headers:{'apikey':SUPA_KEY,'Content-Type':'application/json'},
@@ -574,29 +574,36 @@ async function doLogin(){
     });
     const data=await res.json();
     if(res.ok && data.access_token){
+      // Login OK
       localStorage.setItem('cb_token',data.access_token);
       if(data.refresh_token) localStorage.setItem('cb_refresh',data.refresh_token);
       currentUser=data.user;
       await afterLogin();
     } else {
-      // If login fails, try register
+      // Login failed — check error
+      const errCode=data.error||data.msg||data.message||'';
+      // "Invalid login credentials" = wrong PIN or new user
+      // Try signup only if it looks like a new user (not wrong password)
       const res2=await fetch(SUPA_URL+'/auth/v1/signup',{
         method:'POST',
         headers:{'apikey':SUPA_KEY,'Content-Type':'application/json'},
         body:JSON.stringify({email,password:pin})
       });
       const data2=await res2.json();
-      if(res2.ok && data2.access_token){
+      if(data2.code===422 || (data2.msg||'').includes('already') || (data2.message||'').includes('already')){
+        // User exists but PIN is wrong
+        setLoginMsg('PIN incorrecto. Intentá de nuevo.');
+        clearPin();document.getElementById('pin0').focus();
+      } else if(res2.ok && data2.access_token){
+        // New user registered and logged in
         localStorage.setItem('cb_token',data2.access_token);
         if(data2.refresh_token) localStorage.setItem('cb_refresh',data2.refresh_token);
         currentUser=data2.user;
         await afterLogin();
       } else if(res2.ok && !data2.access_token){
-        // Email confirmation required - unlikely since we turned it off
         setLoginMsg('Revisá tu email para confirmar.','#4a9c6a');
       } else {
-        const errMsg=data2.msg||data2.message||data2.error_description||'PIN incorrecto.';
-        setLoginMsg(errMsg);
+        setLoginMsg('PIN incorrecto. Intentá de nuevo.');
         clearPin();document.getElementById('pin0').focus();
       }
     }
@@ -1306,7 +1313,7 @@ function openSetReader(idx){
 // IMPORT
 // ═══════════════════════════════════════════════════
 function showImport(){prevScreen=document.querySelector('.scr.on').id;show('sImport');}
-const CREX=/^[A-G][#b]?(maj7?|Maj7?|M7?|min7?|m7?|sus[24]?|aug|dim7?|add\d+|\d+|\/[A-G][#b]?)*$|^[Nn]\.?[Cc]\.?$/;
+const CREX=/^[A-G][#b]?((maj|min|m|M)(7|9|11|13)?|sus[24]?|aug|dim7?|add(9|11|13|#11|\d+)|6\/9|6|9|11|13|(#|b)(5|9|11)|\/[A-G][#b]?)*$|^[Nn]\.?[Cc]\.?$/;
 function isCh(t){return CREX.test(t);}
 function isChLine(l){if(!l.trim())return false;const tk=l.trim().split(/\s+/);return tk.filter(t=>isCh(t)).length/tk.length>=0.6;}
 function runImport(){
@@ -1340,7 +1347,7 @@ function runImport(){
 // ═══════════════════════════════════════════════════
 // CHORD PICKER
 // ═══════════════════════════════════════════════════
-const CHORDS={maj:['A','B','C','D','E','F','G','A#','Bb','C#','Db','D#','Eb','F#','Gb','G#','Ab'],min:['Am','Bm','Cm','Dm','Em','Fm','Gm','A#m','Bbm','C#m','F#m'],dom:['A7','B7','C7','D7','E7','F7','G7','Am7','Dm7','Em7','Cmaj7','Fmaj7','Gmaj7'],sus:['Dsus2','Dsus4','Asus2','Asus4','Esus4','Cadd9','Gadd9','Em/G','A/C#','G/B','D/F#','NC']};
+const CHORDS={maj:['A','B','C','D','E','F','G','A#','Bb','C#','Db','D#','Eb','F#','Gb','G#','Ab'],min:['Am','Bm','Cm','Dm','Em','Fm','Gm','A#m','Bbm','C#m','Dbm','F#m','G#m'],dom:['A7','B7','C7','D7','E7','F7','G7','Am7','Dm7','Em7','Cmaj7','Fmaj7','Gmaj7','Amaj7','Dmaj7','Bmaj7'],sus:['Dsus2','Dsus4','Asus2','Asus4','Esus4','Cadd9','Gadd9','Fadd9','Dadd9','Gadd#11','A6/9','F6/9','G6/9','C6/9','Em/G','A/C#','G/B','D/F#','E/G#','C/E','NC']};
 let cpTgt=null;
 function buildCP(){
   [{id:'cpMaj',k:'maj'},{id:'cpMin',k:'min'},{id:'cpDom',k:'dom'},{id:'cpSus',k:'sus'}].forEach(({id,k})=>{
@@ -1394,9 +1401,13 @@ const ENARH={Db:'C#',Eb:'D#',Fb:'E',Gb:'F#',Ab:'G#',Bb:'A#',Cb:'B'};
 function nIdx(n){return NOTES.indexOf(ENARH[n]||n);}
 function transposeNote(n,st){const i=nIdx(n);if(i<0)return n;const ni=((i+st)%12+12)%12;let r=NOTES[ni];if(st<0){const f={C:'C','C#':'Db',D:'D','D#':'Eb',E:'E',F:'F','F#':'Gb',G:'G','G#':'Ab',A:'A','A#':'Bb',B:'B'};r=f[r]||r;}return r;}
 function transposeChord(ch,st){
-  if(!ch||ch==='—')return ch;if(st===0)return ch;
+  if(!ch||ch==='—'||ch==='%'||ch==='NC')return ch;
+  if(st===0)return ch;
+  // Only split on / if what follows is a note letter (bass note), not a number
   const si=ch.lastIndexOf('/');
-  if(si>0)return transposeChord(ch.slice(0,si),st)+'/'+transposeChord(ch.slice(si+1),st);
+  if(si>0 && /[A-G]/.test(ch[si+1])){
+    return transposeChord(ch.slice(0,si),st)+'/'+transposeChord(ch.slice(si+1),st);
+  }
   let root=ch[0],rest=ch.slice(1);
   if(rest[0]==='#'||rest[0]==='b'){root+=rest[0];rest=rest.slice(1);}
   return transposeNote(root,st)+rest;
