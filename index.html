@@ -7,56 +7,15 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ChordBook">
 <meta name="theme-color" content="#0e0c0b">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
 <title>ChordBook</title>
 <script>
-// Register Service Worker for offline use
 if('serviceWorker' in navigator){
-  window.addEventListener('load', ()=>{
-    // Inline service worker as blob URL
-    const swCode = `
-const CACHE = 'chordbook-v1';
-const FILES = ['/chordbook/', '/chordbook/index.html'];
-
-self.addEventListener('install', e=>{
-  e.waitUntil(
-    caches.open(CACHE).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting())
-  );
-});
-
-self.addEventListener('activate', e=>{
-  e.waitUntil(
-    caches.keys().then(keys=>Promise.all(
-      keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))
-    )).then(()=>self.clients.claim())
-  );
-});
-
-self.addEventListener('fetch', e=>{
-  // For Supabase API calls: network first, fail silently
-  if(e.request.url.includes('supabase.co')){
-    e.respondWith(fetch(e.request).catch(()=>new Response('{}',{headers:{'Content-Type':'application/json'}})));
-    return;
-  }
-  // For app files: cache first, network fallback
-  e.respondWith(
-    caches.match(e.request).then(cached=>{
-      if(cached) return cached;
-      return fetch(e.request).then(res=>{
-        if(res && res.status===200){
-          const clone=res.clone();
-          caches.open(CACHE).then(c=>c.put(e.request,clone));
-        }
-        return res;
-      }).catch(()=>caches.match('/chordbook/index.html'));
-    })
-  );
-});
-`;
-    const blob = new Blob([swCode], {type:'application/javascript'});
-    const url = URL.createObjectURL(blob);
-    navigator.serviceWorker.register(url, {scope:'/chordbook/'})
-      .then(()=>console.log('SW registered'))
-      .catch(e=>console.log('SW error:',e));
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js',{scope:'/chordbook/'})
+      .then(()=>console.log('SW ok'))
+      .catch(e=>console.log('SW fail',e));
   });
 }
 </script>
