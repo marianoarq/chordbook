@@ -328,7 +328,13 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
         <option value="3">3rd fret</option><option value="4">4th fret</option><option value="5">5th fret</option>
         <option value="6">6th fret</option><option value="7">7th fret</option>
       </select></div>
-      <div></div>
+      <div><div class="lbl">Duración (MM:SS)</div>
+        <div style="display:flex;gap:5px;align-items:center;">
+          <input id="mDurMM" class="inp" type="number" min="0" max="59" placeholder="MM" style="width:52px;text-align:center;">
+          <span style="color:#5c544c;">:</span>
+          <input id="mDurSS" class="inp" type="number" min="0" max="59" placeholder="SS" style="width:52px;text-align:center;">
+        </div>
+      </div>
     </div>
     <div><div class="lbl">Setlists</div><div class="chips" id="mChips"></div></div>
   </div>
@@ -378,7 +384,13 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
         <option value="3">3rd fret</option><option value="4">4th fret</option><option value="5">5th fret</option>
         <option value="6">6th fret</option><option value="7">7th fret</option>
       </select></div>
-      <div></div>
+      <div><div class="lbl">Duración (MM:SS)</div>
+        <div style="display:flex;gap:5px;align-items:center;">
+          <input id="ccDurMM" class="inp" type="number" min="0" max="59" placeholder="MM" style="width:52px;text-align:center;">
+          <span style="color:#5c544c;">:</span>
+          <input id="ccDurSS" class="inp" type="number" min="0" max="59" placeholder="SS" style="width:52px;text-align:center;">
+        </div>
+      </div>
     </div>
     <div class="hint">Formato <span style="color:#e8896a;">chord-over-lyric</span>.<br>• <span style="color:#e8896a;">[Verse 1]</span> → sección &nbsp;|&nbsp; línea de acordes arriba de letra</div>
     <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
@@ -439,6 +451,7 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
       <button class="slnavbtn" id="btnSPrev" onclick="prevSong()">◀</button>
       <div class="slnavinfo" id="snavInfo"></div>
       <div id="snavPos" style="font-family:'DM Mono',monospace;font-size:.7rem;color:#c96a4a;white-space:nowrap;flex-shrink:0;letter-spacing:1px;"></div>
+      <div id="showTimer" style="display:none;font-family:'Bebas Neue',sans-serif;font-size:.95rem;color:#4a9c6a;letter-spacing:2px;flex-shrink:0;cursor:pointer;" onclick="toggleShowTimer()" title="Tiempo de show">00:00</div>
       <button class="slnavbtn" id="btnSNext" onclick="nextSong()">▶</button>
     </div>
     <div class="r-hdr">
@@ -458,7 +471,7 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
         <button class="tbtn" onclick="adjF(1)">A+</button>
       </div>
       <div class="tsep"></div>
-      <button id="expandSlBtn" onclick="openSlOverlay()" style="display:none;background:none;border:1px solid #2e2825;color:#5c544c;padding:3px 9px;border-radius:20px;font-family:'DM Mono',monospace;font-size:.52rem;letter-spacing:1px;cursor:pointer;white-space:nowrap;">☰ SET</button>
+      <button id="expandSlBtn" onclick="openSlOverlay()" style="display:none;background:none;border:1px solid #2e2825;color:#5c544c;padding:4px 12px;border-radius:20px;font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:2px;cursor:pointer;white-space:nowrap;">☰ SET</button>
     </div>
     <div class="tempobar">
       <!-- BPM + Capo display -->
@@ -466,10 +479,25 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
       <span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:#5c544c;letter-spacing:2px;">BPM</span>
       <span id="capoDisp" style="display:none;font-family:'DM Mono',monospace;font-size:.62rem;background:#2e2825;color:#e8896a;padding:2px 8px;border-radius:10px;letter-spacing:1px;margin-left:2px;"></span>
       <div class="tsp"></div>
-      <div id="speedBtns" style="display:flex;align-items:center;gap:5px;">
-        <button class="spdBtn" onclick="setSpd(0.25)">×0.25</button>
-        <button class="spdBtn" onclick="setSpd(0.5)">×0.5</button>
-        <button class="spdBtn on" onclick="setSpd(1)">×1</button>
+      <!-- Duration mode: MM:SS input -->
+      <div id="durMode" style="display:flex;align-items:center;gap:5px;">
+        <div id="speedBtns" style="display:flex;align-items:center;gap:4px;">
+          <button class="spdBtn" onclick="setSpd(0.25)">×0.25</button>
+          <button class="spdBtn" onclick="setSpd(0.5)">×0.5</button>
+          <button class="spdBtn on" onclick="setSpd(1)">×1</button>
+        </div>
+        <div id="durInput" style="display:none;align-items:center;gap:4px;">
+          <span style="font-family:'DM Mono',monospace;font-size:.55rem;color:#5c544c;">⏱</span>
+          <input id="durMM" type="number" min="0" max="59" placeholder="MM"
+            style="width:36px;background:#1e1a17;border:1px solid #2e2825;color:#e8896a;font-family:'Bebas Neue',sans-serif;font-size:1rem;text-align:center;border-radius:4px;padding:2px 2px;outline:none;"
+            oninput="onDurChange()">
+          <span style="color:#5c544c;font-family:'DM Mono',monospace;">:</span>
+          <input id="durSS" type="number" min="0" max="59" placeholder="SS"
+            style="width:36px;background:#1e1a17;border:1px solid #2e2825;color:#e8896a;font-family:'Bebas Neue',sans-serif;font-size:1rem;text-align:center;border-radius:4px;padding:2px 2px;outline:none;"
+            oninput="onDurChange()">
+        </div>
+        <button id="durToggleBtn" onclick="toggleDurMode()"
+          style="background:none;border:1px solid #2e2825;color:#5c544c;padding:2px 7px;border-radius:20px;font-family:'DM Mono',monospace;font-size:.52rem;letter-spacing:1px;cursor:pointer;white-space:nowrap;">⏱</button>
       </div>
       <button class="playbtn" id="playBtn" onclick="togglePlay()">▶</button>
     </div>
@@ -834,6 +862,8 @@ function showMeta(idx=-1){
   document.getElementById('mS').value=String(s.sig||4);
   document.getElementById('mB').value=s.bpm||120;
   document.getElementById('mCapo').value=String(s.capo||0);
+  document.getElementById('mDurMM').value=s.durMM||'';
+  document.getElementById('mDurSS').value=s.durSS||'';
   fillChips('mChips',s.slIds||[]);
   show('sMeta');
 }
@@ -857,6 +887,8 @@ function saveMeta(){
     sig:parseInt(document.getElementById('mS').value)||4,
     bpm:parseInt(document.getElementById('mB').value)||120,
     capo:parseInt(document.getElementById('mCapo').value)||0,
+    durMM:parseInt(document.getElementById('mDurMM').value)||0,
+    durSS:parseInt(document.getElementById('mDurSS').value)||0,
     slIds, sections:editIdx>=0?songs[editIdx].sections:[]
   };
   if(editIdx>=0)songs[editIdx]=entry; else{songs.push(entry);editIdx=songs.length-1;}
@@ -1201,6 +1233,8 @@ function showCC(idx=-1){
   document.getElementById('ccB').value=s.bpm||120;
   document.getElementById('ccS').value=String(s.sig||4);
   document.getElementById('ccCapo').value=String(s.capo||0);
+  document.getElementById('ccDurMM').value=s.durMM||'';
+  document.getElementById('ccDurSS').value=s.durSS||'';
   document.getElementById('ccContent').value=s.textContent||'';
   fillChips('ccChips',s.slIds||[]);
   show('sCC');
@@ -1213,6 +1247,8 @@ function saveCC(){
     bpm:parseInt(document.getElementById('ccB').value)||120,
     sig:parseInt(document.getElementById('ccS').value)||4,
     capo:parseInt(document.getElementById('ccCapo').value)||0,
+    durMM:parseInt(document.getElementById('ccDurMM').value)||0,
+    durSS:parseInt(document.getElementById('ccDurSS').value)||0,
     slIds, textContent:document.getElementById('ccContent').value};
   if(ccEditIdx>=0)songs[ccEditIdx]=entry;else{songs.push(entry);ccEditIdx=songs.length-1;}
   syncSlSongs(ccEditIdx,slIds);save();back();
@@ -1382,15 +1418,58 @@ function showSlDetail(idx){
   show('sSlDetail');
 }
 
+let gigStartTime = null;
+let gigTimerIv = null;
+let gigPaused = false;
+let gigPausedMs = 0;
+
+function startShowTimer(){
+  gigStartTime = Date.now();
+  gigPausedMs = 0;
+  gigPaused = false;
+  const el = document.getElementById('showTimer');
+  if(el) el.style.display = '';
+  if(gigTimerIv) clearInterval(gigTimerIv);
+  gigTimerIv = setInterval(()=>{
+    if(gigPaused) return;
+    const elapsed = Date.now() - gigStartTime - gigPausedMs;
+    const m = Math.floor(elapsed/60000);
+    const s = Math.floor((elapsed%60000)/1000);
+    const el2 = document.getElementById('showTimer');
+    if(el2) el2.textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  }, 1000);
+}
+
+function toggleShowTimer(){
+  // Tap to pause/resume
+  gigPaused = !gigPaused;
+  if(gigPaused){
+    gigPausedMs -= Date.now(); // will subtract start of pause
+    document.getElementById('showTimer').style.color='#c96a4a';
+  } else {
+    gigPausedMs += Date.now(); // net paused ms
+    document.getElementById('showTimer').style.color='#4a9c6a';
+  }
+}
+
+function stopShowTimer(){
+  if(gigTimerIv){clearInterval(gigTimerIv);gigTimerIv=null;}
+  const el=document.getElementById('showTimer');
+  if(el){el.style.display='none';el.textContent='00:00';}
+  gigStartTime=null;gigPaused=false;gigPausedMs=0;
+}
+
 function startGig(){
   const sl = sets[currentSlIdx];
   if(!sl?.songIds?.length){alert('Sin canciones.');return;}
+  startShowTimer();
   openReader(sl.songIds[0], sl, 0);
 }
 
 function startGigFrom(pos){
   const sl = sets[currentSlIdx];
   if(!sl?.songIds?.length) return;
+  if(pos===0) startShowTimer();
   openReader(sl.songIds[pos], sl, pos);
 }
 
@@ -1671,7 +1750,14 @@ function openReader(idx,sl,pos){
   prevScreen=document.querySelector('.scr.on').id;
   rSong=songs[idx]; rSetlist=sl||null; rSetPos=pos||0;
   rBPM=rSong.bpm||120; rT=0; rFi=2; rCurIdx=0;
-  scrollMode=true; scrollSpeedMult=1;
+  scrollMode=true; scrollSpeedMult=1; durBasedMode=false;
+  // Reset dur mode UI
+  const durBtn=document.getElementById('durToggleBtn');
+  if(durBtn){durBtn.style.borderColor='#2e2825';durBtn.style.color='#5c544c';}
+  const spdBtns=document.getElementById('speedBtns');
+  const durInp=document.getElementById('durInput');
+  if(spdBtns) spdBtns.style.display='flex';
+  if(durInp) durInp.style.display='none';
 
   // Always scroll mode
   const mid=document.getElementById('rMid');
@@ -1715,7 +1801,7 @@ function openReader(idx,sl,pos){
   show('sReader');
 }
 
-function exitReader(){stopPlay();stopScroll();closeSlOverlay();back();}
+function exitReader(){stopPlay();stopScroll();closeSlOverlay();stopShowTimer();back();}
 function openSlOverlay(){
   if(!rSetlist) return;
   const sl = rSetlist;
@@ -1901,8 +1987,9 @@ function animProg(){
 //   setInterval increments rMid.scrollTop
 //   This is the simplest possible approach and guaranteed to work.
 
-// ─── OPEN ─────────────────────────────────────────
-let scrollSpeedMult = 1; // current multiplier
+// ─── SCROLL ENGINE ────────────────────────────────
+let scrollSpeedMult = 1;
+let durBasedMode = false;
 
 function stopScroll(){
   if(scrollIv){clearInterval(scrollIv);scrollIv=null;}
@@ -1910,41 +1997,86 @@ function stopScroll(){
   if(pb&&scrollMode){pb.textContent='▶';pb.classList.remove('active');}
 }
 
-// Base speed: ~1 px per frame at 60fps for a comfortable read pace
-// Multiplied by scrollSpeedMult
-function getScrollSpeed(){
-  // Base: 1.2 px/frame regardless of BPM — BPM had no intuitive effect
-  return 0.5 + 1.5 * scrollSpeedMult; // ×0.25=0.875, ×0.5=1.25, ×1=2px/frame
+function toggleDurMode(){
+  durBasedMode = !durBasedMode;
+  const btn = document.getElementById('durToggleBtn');
+  const spdBtns = document.getElementById('speedBtns');
+  const durInp = document.getElementById('durInput');
+  if(durBasedMode){
+    btn.style.borderColor='#4a9c6a'; btn.style.color='#4a9c6a';
+    spdBtns.style.display='none'; durInp.style.display='flex';
+    // Pre-fill from song duration if set
+    const mm=rSong?.durMM||0, ss=rSong?.durSS||0;
+    if(mm||ss){ document.getElementById('durMM').value=mm||''; document.getElementById('durSS').value=ss||''; }
+  } else {
+    btn.style.borderColor='#2e2825'; btn.style.color='#5c544c';
+    spdBtns.style.display='flex'; durInp.style.display='none';
+  }
+  if(scrollIv){ stopScroll(); _play(); }
+}
+
+function onDurChange(){ if(scrollIv){ stopScroll(); _play(); } }
+
+function getDurMs(){
+  const mm=parseInt(document.getElementById('durMM').value)||0;
+  const ss=parseInt(document.getElementById('durSS').value)||0;
+  return(mm*60+ss)*1000;
 }
 
 function startScrolling(){
-  if(scrollIv){ clearInterval(scrollIv); scrollIv=null; }
-  const msMap={0.25:180, 0.5:120, 1:16}; const ms=msMap[scrollSpeedMult]||Math.round(16/scrollSpeedMult);
-  scrollIv = setInterval(function(){
-    var el = document.getElementById('rMid');
-    if(!el || !scrollMode){ clearInterval(scrollIv); scrollIv=null; return; }
-    var max = el.scrollHeight - el.clientHeight;
-    if(max <= 0) return;
-    el.scrollTop += 2;
-    if(el.scrollTop >= max){
-      clearInterval(scrollIv); scrollIv=null;
-      var pb=document.getElementById('playBtn');
-      if(pb){ pb.textContent='▶'; pb.classList.remove('active'); }
-    }
-  }, ms);
+  if(scrollIv){clearInterval(scrollIv);scrollIv=null;}
+  const el=document.getElementById('rMid');
+  if(!el) return;
+  if(durBasedMode){
+    const durMs=getDurMs();
+    if(!durMs) return;
+    const totalPx=el.scrollHeight-el.clientHeight;
+    if(totalPx<=0) return;
+    const pxPerMs=totalPx/durMs;
+    const interval=32;
+    const startTime=performance.now();
+    const startScroll=el.scrollTop;
+    scrollIv=setInterval(function(){
+      const elapsed=performance.now()-startTime;
+      el.scrollTop=startScroll+elapsed*pxPerMs;
+      if(el.scrollTop>=el.scrollHeight-el.clientHeight-2){
+        clearInterval(scrollIv);scrollIv=null;
+        const pb=document.getElementById('playBtn');
+        if(pb){pb.textContent='▶';pb.classList.remove('active');}
+      }
+    },interval);
+  } else {
+    const msMap={0.25:180,0.5:120,1:16};
+    const ms=msMap[scrollSpeedMult]||Math.round(16/scrollSpeedMult);
+    scrollIv=setInterval(function(){
+      if(!el||!scrollMode){clearInterval(scrollIv);scrollIv=null;return;}
+      const max=el.scrollHeight-el.clientHeight;
+      if(max<=0) return;
+      el.scrollTop+=2;
+      if(el.scrollTop>=max){
+        clearInterval(scrollIv);scrollIv=null;
+        const pb=document.getElementById('playBtn');
+        if(pb){pb.textContent='▶';pb.classList.remove('active');}
+      }
+    },ms);
+  }
 }
 
 function setSpd(mult){
-  scrollSpeedMult = mult;
+  scrollSpeedMult=mult;
   document.querySelectorAll('.spdBtn').forEach(b=>{
-    b.classList.toggle('on', b.getAttribute('onclick')==='setSpd('+mult+')');
+    b.classList.toggle('on',b.getAttribute('onclick')==='setSpd('+mult+')');
   });
-  if(scrollIv){
-    clearInterval(scrollIv); scrollIv=null;
-    startScrolling();
+  if(scrollIv){stopScroll();startScrolling();
     document.getElementById('playBtn').textContent='⏹';
     document.getElementById('playBtn').classList.add('active');
   }
+}
+
+function _play(){
+  document.getElementById('playBtn').textContent='⏹';
+  document.getElementById('playBtn').classList.add('active');
+  startScrolling();
 }
 
 function togglePlay(){
