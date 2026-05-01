@@ -170,10 +170,10 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
 .r-back{background:none;border:none;color:#5c544c;font-size:.95rem;cursor:pointer;padding:3px;}
 .r-title{font-family:'Cormorant Garamond',serif;font-size:1.05rem;font-weight:600;color:#c96a4a;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic;}
 .r-badge{font-family:'DM Mono',monospace;font-size:.58rem;color:#5c544c;white-space:nowrap;}
-.secstrip{display:flex;gap:6px;padding:4px 12px 6px;overflow-x:auto;border-bottom:1px solid #2e2825;flex-shrink:0;scrollbar-width:none;}
+.secstrip{display:flex;gap:6px;padding:5px 12px 6px;overflow-x:auto;border-bottom:1px solid #2e2825;flex-shrink:0;scrollbar-width:none;}
 .secstrip::-webkit-scrollbar{display:none;}
-.secpill{flex-shrink:0;background:none;border:1px solid #2e2825;color:#5c544c;padding:2px 10px;border-radius:20px;font-family:'DM Mono',monospace;font-size:.55rem;cursor:pointer;}
-.secpill.on{background:#c96a4a;border-color:#c96a4a;color:#0e0c0b;}
+.secpill{flex-shrink:0;background:none;border:1px solid #c96a4a;color:#c96a4a;padding:3px 12px;border-radius:6px;font-family:'DM Mono',monospace;font-size:.6rem;cursor:pointer;letter-spacing:.5px;white-space:nowrap;}
+.secpill:active{background:#c96a4a;color:#0e0c0b;}
 .toolsbar{display:flex;align-items:center;gap:6px;padding:5px 12px;border-bottom:1px solid #2e2825;background:#100e0c;}
 .toolgrp{display:flex;align-items:center;gap:4px;}
 .tbtn{background:none;border:1px solid #2e2825;color:#b8b0a4;width:26px;height:26px;border-radius:4px;font-family:'DM Mono',monospace;font-size:.72rem;cursor:pointer;display:flex;align-items:center;justify-content:center;}
@@ -278,8 +278,7 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
       <span id="userDisp" onclick="showSyncStatus()" style="font-family:'DM Mono',monospace;font-size:.5rem;color:#5c544c;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" title="Estado de sincronización">☁</span>
       <span id="offlineBadge" style="display:none;font-family:'DM Mono',monospace;font-size:.5rem;background:#c0392b;color:#fff;padding:1px 6px;border-radius:10px;letter-spacing:1px;">sin señal</span>
       <button onclick="logout()" id="logoutBtn" style="display:none;background:none;border:1px solid #2e2825;color:#5c544c;font-family:'DM Mono',monospace;font-size:.5rem;padding:3px 7px;border-radius:20px;cursor:pointer;letter-spacing:1px;">salir</button>
-      <button class="btn btn-ghost" onclick="showImport()">↓ import</button>
-      <button class="btn btn-ghost terra" onclick="showCC()">CC</button>
+      <button class="btn btn-ghost terra" onclick="showCC()" style="font-size:.55rem;letter-spacing:.5px;">Upload Chords</button>
       <button class="btn btn-round" onclick="showMeta()">+</button>
     </div>
   </div>
@@ -431,27 +430,6 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
 </div>
 
 <!-- IMPORT -->
-<div id="sImport" class="scr">
-  <div class="ed-hdr">
-    <button class="btn-back" onclick="back()">←</button>
-    <div class="ed-title">Importar</div>
-    <button class="btn-save" onclick="runImport()">Importar</button>
-  </div>
-  <div class="ed-body" style="gap:10px;">
-    <div class="row2">
-      <div><div class="lbl">Título</div><input id="impT" class="inp" placeholder="Nombre"></div>
-      <div><div class="lbl">Artista</div><input id="impA" class="inp" placeholder="Artista"></div>
-    </div>
-    <div class="row2">
-      <div><div class="lbl">BPM</div><input id="impB" class="inp" type="number" value="120"></div>
-      <div><div class="lbl">Compás</div><select id="impS" class="inp"><option value="4">4/4</option><option value="3">3/4</option><option value="2">2/4</option></select></div>
-    </div>
-    <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
-      <div class="lbl">Pegá texto de Ultimate Guitar</div>
-      <textarea id="impText" class="inp" style="white-space:pre;" placeholder="Am        Em  G&#10;Aint no sunshine when she's gone"></textarea>
-    </div>
-  </div>
-</div>
 
 <!-- ════════════════════════════════════════════════════
      READER
@@ -489,6 +467,8 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
       <div class="tsep"></div>
       <button id="expandSlBtn" onclick="openSlOverlay()" style="display:none;background:none;border:1px solid #2e2825;color:#5c544c;padding:4px 12px;border-radius:20px;font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:2px;cursor:pointer;white-space:nowrap;">☰ SET</button>
     </div>
+    <!-- Section pills - fixed, always visible -->
+    <div class="secstrip" id="secStrip" style="display:none;"></div>
     <div class="tempobar">
       <!-- BPM + Capo display -->
       <div id="bpmDisp" style="font-family:'Bebas Neue',sans-serif;font-size:1.9rem;color:#e8896a;line-height:1;">120</div>
@@ -1242,7 +1222,7 @@ let ccEditIdx=-1;
 function showCC(idx=-1){
   ccEditIdx=idx; prevScreen=document.querySelector('.scr.on').id;
   const s=idx>=0?songs[idx]:{};
-  document.getElementById('ccTitle').textContent=idx>=0?'Editar canción':'Classic Chords';
+  document.getElementById('ccTitle').textContent=idx>=0?'Editar canción':'Upload Classic Chords';
   document.getElementById('ccT').value=s.title||'';
   document.getElementById('ccA').value=s.artist||'';
   document.getElementById('ccB').value=s.bpm||120;
@@ -1450,37 +1430,10 @@ function startGigFrom(pos){
 // ═══════════════════════════════════════════════════
 // IMPORT
 // ═══════════════════════════════════════════════════
-function showImport(){prevScreen=document.querySelector('.scr.on').id;show('sImport');}
 const CREX=/^[A-G][#b]?((maj|min|m|M)(7|9|11|13)?|sus[24]?|aug|dim7?|add(9|11|13|#11|\d+)|6\/9|\d+(\.\d+)?|(#|b)(5|9|11)|\/[A-G][#b]?)*$|^[Nn]\.?[Cc]\.?$/;
 function isCh(t){return CREX.test(t);}
 function isChLine(l){if(!l.trim())return false;const tk=l.trim().split(/\s+/);return tk.filter(t=>isCh(t)).length/tk.length>=0.6;}
-function runImport(){
-  const title=document.getElementById('impT').value.trim()||'Canción importada';
-  const artist=document.getElementById('impA').value.trim();
-  const bpm=parseInt(document.getElementById('impB').value)||120;
-  const sig=parseInt(document.getElementById('impS').value)||4;
-  const text=document.getElementById('impText').value;
-  const lines=text.split('\n');const compases=[];let i=0;
-  while(i<lines.length){
-    const line=lines[i],tr=line.trim();
-    if(!tr){i++;continue;}
-    if(/^\[.+\]$/.test(tr)){i++;continue;}
-    if(isChLine(line)){
-      const nxt=lines[i+1]||'',nxtr=nxt.trim();
-      const hasLy=nxtr&&!isChLine(nxt)&&!/^\[.+\]$/.test(nxtr);
-      const tks=line.trim().split(/\s+/).filter(t=>isCh(t));
-      const times=[];for(let j=0;j<sig;j++)times.push(tks[Math.min(j,tks.length-1)]||'');
-      compases.push({lyric:hasLy?nxtr:'',sig,times});i+=hasLy?2:1;
-    }else{
-      const last=compases[compases.length-1];
-      if(last&&!last.lyric)last.lyric=tr;
-      else compases.push({lyric:tr,sig,times:Array(sig).fill('')});i++;
-    }
-  }
-  if(!compases.length){alert('No se detectaron acordes.');return;}
-  songs.push({id:uid(),title,artist,sig,bpm,slIds:[],sections:[{name:'Canción',compases}]});
-  save();renderSongs();show('sHome');
-}
+
 
 // ═══════════════════════════════════════════════════
 // CHORD PICKER
@@ -1773,7 +1726,7 @@ function openReader(idx,sl,pos){
   if(capo>0){cd.textContent='CAPO '+capoLabels[capo];cd.style.display='';}
   else cd.style.display='none';
 
-  // Render all content (scroll mode = no pagination)
+  // Render all content
   if(rSong.type==='cc'){
     ccParsed=parseCC(rSong.textContent||'');
     document.getElementById('rContent').innerHTML=renderCCHtml(ccParsed,rT,FS[rFi].ly,FS[rFi].ch);
@@ -1781,6 +1734,7 @@ function openReader(idx,sl,pos){
     buildFlat(); renderAllGrid();
   }
   document.getElementById('rTitle').textContent=rSong.title.toUpperCase();
+  buildPills();
 
   const nav=document.getElementById('rSlNav');
   if(rSetlist){nav.classList.add('on');updateSlNav();}else nav.classList.remove('on');
@@ -1865,20 +1819,79 @@ function loadSlSong(){
 
 // ─── GRID RENDER ──────────────────────────────────
 function buildPills(){
-  const strip=document.getElementById('secStrip');strip.innerHTML='';
-  const seen=new Set();
-  rFlat.forEach((c,i)=>{
-    if(!seen.has(c.secName)){seen.add(c.secName);
-      const p=document.createElement('button');p.className='secpill';p.textContent=c.secName;
-      p.onclick=()=>{stopPlay();rCurIdx=i;rPage=Math.floor(i/getCPP());renderGridPage();};
-      strip.appendChild(p);
-    }
+  const strip=document.getElementById('secStrip');
+  strip.innerHTML='';
+  let sections=[];
+  if(rSong.type==='cc'){
+    // Extract sections from CC parsed content
+    ccParsed.forEach(item=>{ if(item.t==='sec') sections.push(item.name); });
+  } else {
+    // Grid: use estructura nombres
+    (rSong.estructura||[]).forEach(sec=>sections.push(sec.nombre));
+  }
+  if(!sections.length){ strip.style.display='none'; return; }
+  strip.style.display='flex';
+  sections.forEach(name=>{
+    const p=document.createElement('button');
+    p.className='secpill';
+    p.textContent=name;
+    p.onclick=()=>{
+      // Find the section header in rContent and scroll to it
+      const headers=document.querySelectorAll('#rContent .r-sechdr, #rContent .cc-sec');
+      for(const h of headers){
+        if(h.textContent.trim()===name){
+          const mid=document.getElementById('rMid');
+          // Scroll rMid to this element
+          const elTop=h.getBoundingClientRect().top;
+          const midTop=mid.getBoundingClientRect().top;
+          mid.scrollTop += (elTop - midTop) - 8;
+          // If scrolling with duration, restart from new position
+          if(scrollIv && durBasedMode) restartScrollFromHere();
+          break;
+        }
+      }
+    };
+    strip.appendChild(p);
   });
-  refreshPills();
 }
-function refreshPills(){
-  const cur=rFlat[rCurIdx]?.secName||'';
-  document.querySelectorAll('.secpill').forEach(p=>p.classList.toggle('on',p.textContent===cur));
+
+function restartScrollFromHere(){
+  // Recalculate scroll speed based on remaining content and remaining time
+  if(scrollIv){clearInterval(scrollIv);scrollIv=null;}
+  const el=document.getElementById('rMid');
+  if(!el) return;
+  const remaining=el.scrollHeight-el.clientHeight-el.scrollTop;
+  if(remaining<=2) return;
+  const durMs=getDurMs();
+  if(!durMs || !gigStartTime){
+    // No duration — use x0.25
+    scrollIv=setInterval(function(){
+      if(!el||!scrollMode){clearInterval(scrollIv);scrollIv=null;return;}
+      el.scrollTop+=2;
+      if(el.scrollTop>=el.scrollHeight-el.clientHeight-2){
+        clearInterval(scrollIv);scrollIv=null;
+        const pb=document.getElementById('playBtn');
+        if(pb){pb.textContent='▶';pb.classList.remove('active');}
+      }
+    },180);
+    return;
+  }
+  // Calculate elapsed time and remaining time
+  const elapsed=Date.now()-gigStartTime-gigPausedMs;
+  const remainingMs=Math.max(1000, durMs-elapsed);
+  const pxPerMs=remaining/remainingMs;
+  const interval=32;
+  const startTime=performance.now();
+  const startScroll=el.scrollTop;
+  scrollIv=setInterval(function(){
+    const t=performance.now()-startTime;
+    el.scrollTop=startScroll+t*pxPerMs;
+    if(el.scrollTop>=el.scrollHeight-el.clientHeight-2){
+      clearInterval(scrollIv);scrollIv=null;
+      const pb=document.getElementById('playBtn');
+      if(pb){pb.textContent='▶';pb.classList.remove('active');}
+    }
+  },interval);
 }
 // ─── CC state ─────────────────────────────────────
 let ccParsed=[];
@@ -2026,8 +2039,7 @@ function startScrolling(){
   if(durBasedMode){
     const durMs=getDurMs();
     if(!durMs){
-      // No duration set — fall back to ×0.25 speed
-      const ms=180;
+      // No duration — use x0.25 fixed speed
       scrollIv=setInterval(function(){
         if(!el||!scrollMode){clearInterval(scrollIv);scrollIv=null;return;}
         const max=el.scrollHeight-el.clientHeight;
@@ -2038,18 +2050,23 @@ function startScrolling(){
           const pb=document.getElementById('playBtn');
           if(pb){pb.textContent='▶';pb.classList.remove('active');}
         }
-      },ms);
+      },180);
       return;
     }
+    // Duration mode: scroll proportionally to remaining time
+    // This recalculates from current position every time it starts
     const totalPx=el.scrollHeight-el.clientHeight;
     if(totalPx<=0) return;
-    const pxPerMs=totalPx/durMs;
+    const remainingPx=totalPx-el.scrollTop;
+    const elapsed=gigStartTime?(Date.now()-gigStartTime-gigPausedMs):0;
+    const remainingMs=Math.max(1000, durMs-elapsed);
+    const pxPerMs=remainingPx/remainingMs;
     const interval=32;
     const startTime=performance.now();
     const startScroll=el.scrollTop;
     scrollIv=setInterval(function(){
-      const elapsed=performance.now()-startTime;
-      el.scrollTop=startScroll+elapsed*pxPerMs;
+      const t=performance.now()-startTime;
+      el.scrollTop=startScroll+t*pxPerMs;
       if(el.scrollTop>=el.scrollHeight-el.clientHeight-2){
         clearInterval(scrollIv);scrollIv=null;
         const pb=document.getElementById('playBtn');
