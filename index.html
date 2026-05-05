@@ -1047,12 +1047,7 @@ function renderPartes(){
       const wrap=document.createElement('div');
       wrap.style.cssText='display:flex;flex-direction:column;gap:2px;position:relative;';
 
-      // Group bracket indicator above pill
-      if(grp){
-        const gbar=document.createElement('div');
-        gbar.style.cssText='height:4px;border-radius:2px;background:#4a9c6a;margin-bottom:1px;';
-        wrap.appendChild(gbar);
-      }
+      // No top indicator needed - the green border on the pill shows grouping
 
       // PILL ROW: pill + reps control + group button
       const pillRow=document.createElement('div');
@@ -1686,24 +1681,57 @@ function renderAllGrid(){
   html+=`<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #2e2825;">`;
   html+=`<div style="font-family:'DM Mono',monospace;font-size:.5rem;color:#5c544c;letter-spacing:2px;margin-bottom:10px;">PARTES</div>`;
   Object.entries(s.partes).forEach(([letra,compases])=>{
-    html+=`<div style="margin-bottom:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">`;
-    html+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;color:#c96a4a;letter-spacing:2px;flex-shrink:0;min-width:32px;">${esc(letra)}</span>`;
-    compases.forEach((rawC,ci)=>{
-      const comp=normCompas(rawC);
-      const times=comp.times; const reps=comp.reps||1;
-      const resolved=times.map((ch,ti)=>resolvePercent(s,letra,ci,ti,ch));
-      const groups=compressCompas(times,resolved);
-      const PR=28;
-      html+=`<div style="display:flex;align-items:stretch;width:${PR*4}px;min-width:${PR*4}px;height:30px;background:#161311;border:1px solid #2e2825;border-radius:5px;overflow:hidden;gap:1px;">`;
-      groups.forEach((g,gi)=>{
-        const t=transposeChord(g.ch,rT);
-        const isRep=g.orig==='%';
-        const w=Math.round(g.span*PR)-(gi>0?1:0);
-        html+=`<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:.72rem;font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${gi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
-      });
-      html+=`</div>`;
-      if(reps>1) html+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.75rem;color:#c96a4a;align-self:center;">×${reps}</span>`;
-    });
+    html+=`<div style="margin-bottom:10px;display:flex;align-items:flex-end;gap:6px;flex-wrap:wrap;">`;
+    html+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;color:#c96a4a;letter-spacing:2px;flex-shrink:0;min-width:32px;align-self:center;">${esc(letra)}</span>`;
+    const PR=28;
+    let pi=0;
+    while(pi<compases.length){
+      const comp0=normCompas(compases[pi]);
+      if(comp0.grp){
+        let pend=pi;
+        while(pend+1<compases.length && normCompas(compases[pend+1]).grp) pend++;
+        // [ bracket
+        html+=`<span style="font-family:'DM Mono',monospace;font-size:2rem;color:#4a9c6a;line-height:1;align-self:center;margin-right:-2px;">[</span>`;
+        for(let pj=pi;pj<=pend;pj++){
+          const comp=normCompas(compases[pj]);
+          const times=comp.times; const reps=comp.reps||1;
+          const resolved=times.map((ch,ti)=>resolvePercent(s,letra,pj,ti,ch));
+          const groups=compressCompas(times,resolved);
+          html+=`<div style="display:flex;flex-direction:column;gap:2px;align-items:center;">`;
+          html+=`<div style="display:flex;align-items:stretch;width:${PR*4}px;min-width:${PR*4}px;height:30px;background:#161311;border:1px solid #4a9c6a;border-radius:5px;overflow:hidden;gap:1px;">`;
+          groups.forEach((g,gi)=>{
+            const t=transposeChord(g.ch,rT);
+            const isRep=g.orig==='%';
+            const w=Math.round(g.span*PR)-(gi>0?1:0);
+            html+=`<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:.72rem;font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${gi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
+          });
+          html+=`</div>`;
+          if(reps>1) html+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.65rem;color:#c96a4a;">×${reps}</span>`;
+          html+=`</div>`;
+          if(pj<pend) html+=`<span style="color:#3a332e;align-self:center;font-size:.7rem;">·</span>`;
+        }
+        // ] ×N bracket close
+        html+=`<span style="font-family:'DM Mono',monospace;font-size:2rem;color:#4a9c6a;line-height:1;align-self:center;margin-left:-2px;">]</span>`;
+        pi=pend+1;
+      } else {
+        const comp=normCompas(compases[pi]);
+        const times=comp.times; const reps=comp.reps||1;
+        const resolved=times.map((ch,ti)=>resolvePercent(s,letra,pi,ti,ch));
+        const groups=compressCompas(times,resolved);
+        html+=`<div style="display:flex;flex-direction:column;gap:2px;align-items:center;">`;
+        html+=`<div style="display:flex;align-items:stretch;width:${PR*4}px;min-width:${PR*4}px;height:30px;background:#161311;border:1px solid #2e2825;border-radius:5px;overflow:hidden;gap:1px;">`;
+        groups.forEach((g,gi)=>{
+          const t=transposeChord(g.ch,rT);
+          const isRep=g.orig==='%';
+          const w=Math.round(g.span*PR)-(gi>0?1:0);
+          html+=`<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:.72rem;font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${gi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
+        });
+        html+=`</div>`;
+        if(reps>1) html+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.65rem;color:#c96a4a;">×${reps}</span>`;
+        html+=`</div>`;
+        pi++;
+      }
+    }
     html+=`</div>`;
   });
   html+=`</div>`;
@@ -1729,25 +1757,16 @@ function renderAllGrid(){
     while(gi2<parte.length){
       const comp0=normCompas(parte[gi2]);
       if(comp0.grp){
-        // Collect all consecutive grouped compases
         let groupEnd=gi2;
         while(groupEnd+1<parte.length && normCompas(parte[groupEnd+1]).grp) groupEnd++;
-        // Render group bracket
-        html+=`<div style="display:flex;flex-direction:column;gap:2px;">`;
-        // Bracket top line
-        const nInGroup=groupEnd-gi2+1;
-        const groupW=nInGroup*(CW*4+8)-8;
-        html+=`<div style="display:flex;align-items:center;gap:4px;">`;
-        html+=`<div style="height:3px;flex:1;border-top:2px solid #4a9c6a;border-left:2px solid #4a9c6a;border-right:2px solid #4a9c6a;border-radius:3px 3px 0 0;min-width:${groupW}px;"></div>`;
-        html+=`</div>`;
-        // Compases in group
-        html+=`<div style="display:flex;gap:8px;align-items:center;">`;
+        // [ bracket open
+        html+=`<span style="font-family:'DM Mono',monospace;font-size:3rem;color:#4a9c6a;line-height:1;align-self:center;margin-right:-4px;">[</span>`;
         for(let gj=gi2;gj<=groupEnd;gj++){
           const comp=normCompas(parte[gj]);
           const times=comp.times; const reps=comp.reps||1;
           const resolved=times.map((ch,ti)=>resolvePercent(s,sec.parte,gj,ti,ch));
           const groups=compressCompas(times,resolved);
-          html+=`<div style="display:flex;flex-direction:column;gap:2px;">`;
+          html+=`<div style="display:flex;flex-direction:column;gap:3px;align-items:center;">`;
           html+=`<div style="display:flex;align-items:stretch;width:${CW*4}px;min-width:${CW*4}px;height:42px;background:#161311;border:2px solid #4a9c6a;border-radius:6px;overflow:hidden;gap:1px;">`;
           groups.forEach((g,ggi)=>{
             const t=transposeChord(g.ch,rT);
@@ -1756,10 +1775,12 @@ function renderAllGrid(){
             html+=`<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:${chordSize};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${ggi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
           });
           html+=`</div>`;
-          if(reps>1) html+=`<div style="text-align:center;font-family:'Bebas Neue',sans-serif;font-size:.8rem;color:#c96a4a;">×${reps}</div>`;
+          if(reps>1) html+=`<div style="text-align:center;font-family:'Bebas Neue',sans-serif;font-size:.85rem;color:#c96a4a;">×${reps}</div>`;
           html+=`</div>`;
+          if(gj<groupEnd) html+=`<span style="color:#3a332e;align-self:center;font-size:.8rem;margin:0 -2px;">·</span>`;
         }
-        html+=`</div></div>`;
+        // ] ×N bracket close
+        html+=`<span style="font-family:'DM Mono',monospace;font-size:3rem;color:#4a9c6a;line-height:1;align-self:center;margin-left:-4px;">]</span>`;
         gi2=groupEnd+1;
       } else {
         // Normal compas
