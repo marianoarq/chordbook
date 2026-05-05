@@ -279,7 +279,7 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
       <span id="offlineBadge" style="display:none;font-family:'DM Mono',monospace;font-size:.5rem;background:#c0392b;color:#fff;padding:1px 6px;border-radius:10px;letter-spacing:1px;">sin señal</span>
       <button onclick="logout()" id="logoutBtn" style="display:none;background:none;border:1px solid #2e2825;color:#5c544c;font-family:'DM Mono',monospace;font-size:.5rem;padding:3px 7px;border-radius:20px;cursor:pointer;letter-spacing:1px;">salir</button>
       <button class="btn btn-ghost terra" onclick="showCC()" style="font-size:.55rem;letter-spacing:.5px;">Upload Chords</button>
-      <button class="btn btn-round" onclick="showMeta()">+</button>
+      <button class="btn btn-ghost" onclick="showMeta()" style="font-size:.52rem;letter-spacing:.5px;border-color:#c96a4a;color:#c96a4a;">Structure</button>
     </div>
   </div>
   <div class="scrollarea" id="songList"></div>
@@ -774,29 +774,54 @@ async function cloudLoad(){
   try{
     const rows = await supaFetch('GET','userdata?user_id=eq.'+currentUser.id+'&select=songs,sets');
     if(rows && rows[0]){
-      songs = rows[0].songs || [];
-      sets  = rows[0].sets  || [];
-      localStorage.setItem('cb_s',JSON.stringify(songs));
-      localStorage.setItem('cb_l',JSON.stringify(sets));
+      const cloudSongs = rows[0].songs || [];
+      const cloudSets  = rows[0].sets  || [];
+      // Only use cloud data if it has content
+      // If both local and cloud have data, use whichever was updated more recently
+      if(cloudSongs.length > 0 || songs.length === 0){
+        songs = cloudSongs;
+        sets  = cloudSets;
+        localStorage.setItem('cb_s',JSON.stringify(songs));
+        localStorage.setItem('cb_l',JSON.stringify(sets));
+      } else {
+        // Local has data but cloud doesn't — push local to cloud
+        await cloudSave();
+      }
+    } else if(songs.length > 0){
+      // No cloud data at all — push local to cloud
+      await cloudSave();
     }
   }catch(e){ console.warn('Cloud load failed:', e.message); }
 }
+
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 // ═══════════════════════════════════════════════════
-// NAVIGATION
+// NAVIGATION — stack based
 // ═══════════════════════════════════════════════════
-let prevScreen='sHome';
+let navStack = ['sHome'];
+
 function show(id){
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
   document.getElementById(id).classList.add('on');
 }
+
+function push(id){
+  // Push current screen onto stack, then show new screen
+  const cur = document.querySelector('.scr.on')?.id || 'sHome';
+  if(navStack[navStack.length-1] !== cur) navStack.push(cur);
+  show(id);
+}
+
 function back(){
   renderSongs(); renderSets();
-  show(prevScreen);
+  const prev = navStack.length > 1 ? navStack.pop() : 'sHome';
+  show(prev);
 }
+
 function gotoTab(t){
+  navStack = [t==='home'?'sHome':'sSets'];
   if(t==='home'){renderSongs();show('sHome');}
   else{renderSets();show('sSets');}
 }
@@ -849,7 +874,7 @@ function renderSets(){
 // ═══════════════════════════════════════════════════
 let editIdx=-1;
 function showMeta(idx=-1){
-  editIdx=idx; prevScreen=document.querySelector('.scr.on').id;
+  editIdx=idx;
   const s=idx>=0?songs[idx]:{};
   document.getElementById('metaTitle').textContent=idx>=0?'Editar canción':'Nueva canción';
   document.getElementById('mT').value=s.title||'';
@@ -860,7 +885,7 @@ function showMeta(idx=-1){
   document.getElementById('mDurMM').value=s.durMM||'';
   document.getElementById('mDurSS').value=s.durSS||'';
   fillChips('mChips',s.slIds||[]);
-  show('sMeta');
+  push('sMeta');
 }
 function fillChips(id,cur){
   const box=document.getElementById(id);
@@ -928,7 +953,7 @@ function openStructEd(idx){
   }
   document.getElementById('seTitle').textContent = s.title;
   seTab('partes');
-  show('sStruct');
+  push('sStruct');
 }
 
 function seTab(tab){
@@ -1220,7 +1245,7 @@ function doneStruct(){collectPartes();save();renderSongs();show('sHome');}
 // ═══════════════════════════════════════════════════
 let ccEditIdx=-1;
 function showCC(idx=-1){
-  ccEditIdx=idx; prevScreen=document.querySelector('.scr.on').id;
+  ccEditIdx=idx;
   const s=idx>=0?songs[idx]:{};
   document.getElementById('ccTitle').textContent=idx>=0?'Editar canción':'Upload Classic Chords';
   document.getElementById('ccT').value=s.title||'';
@@ -1232,7 +1257,7 @@ function showCC(idx=-1){
   document.getElementById('ccDurSS').value=s.durSS||'';
   document.getElementById('ccContent').value=s.textContent||'';
   fillChips('ccChips',s.slIds||[]);
-  show('sCC');
+  push('sCC');
 }
 function saveCC(){
   const t=document.getElementById('ccT').value.trim();if(!t){alert('Título obligatorio.');return;}
@@ -1254,12 +1279,12 @@ function saveCC(){
 // ═══════════════════════════════════════════════════
 let slEditIdx=-1;
 function showSlEd(idx=-1){
-  slEditIdx=idx; prevScreen=document.querySelector('.scr.on').id;
+  slEditIdx=idx;
   const sl=idx>=0?sets[idx]:{};
   document.getElementById('slEdTitle').textContent=idx>=0?'Editar setlist':'Nuevo setlist';
   document.getElementById('slName').value=sl.name||'';
   renderSlEdList(sl.songIds||[]);
-  show('sSlEd');
+  push('sSlEd');
 }
 
 // Ordered setlist with stored state
@@ -1349,7 +1374,6 @@ function openSetReader(idx){ showSlDetail(idx); }
 
 function showSlDetail(idx){
   currentSlIdx = idx;
-  prevScreen = document.querySelector('.scr.on').id;
   const sl = sets[idx];
   document.getElementById('slDetailTitle').textContent = sl.name;
   const el = document.getElementById('slDetailList');
@@ -1369,7 +1393,7 @@ function showSlDetail(idx){
     d.onclick=()=>{ startGigFrom(pos); };
     el.appendChild(d);
   });
-  show('sSlDetail');
+  push('sSlDetail');
 }
 
 let gigStartTime = null;
@@ -1674,7 +1698,6 @@ function renderAllGrid(){
 }
 function openReader(idx,sl,pos){
   stopPlay(); stopScroll();
-  prevScreen=document.querySelector('.scr.on').id;
   rSong=songs[idx]; rSetlist=sl||null; rSetPos=pos||0;
   rBPM=rSong.bpm||120; rT=0; rCurIdx=0;
   scrollMode=true;
@@ -1742,7 +1765,7 @@ function openReader(idx,sl,pos){
   const esb=document.getElementById('expandSlBtn');
   if(esb) esb.style.display=rSetlist?'':'none';
   updateNavBtns();
-  show('sReader');
+  push('sReader');
 }
 
 function exitReader(){stopPlay();stopScroll();closeSlOverlay();stopShowTimer();back();}
@@ -1813,6 +1836,7 @@ function loadSlSong(){
     document.getElementById('rContent').innerHTML=renderCCHtml(ccParsed,rT,FS[rFi].ly,FS[rFi].ch);
   } else {buildFlat();renderAllGrid();}
   document.getElementById('rTitle').textContent=rSong.title.toUpperCase();
+  buildPills();
   updateNavBtns();
   updateSlNav();
 }
@@ -1927,10 +1951,26 @@ function updateNavBtns(){
 function navPrev(){ if(rSetlist&&rSetPos>0){rSetPos--;loadSlSong();} }
 function navNext(){ if(rSetlist&&rSetPos<rSetlist.songIds.length-1){rSetPos++;loadSlSong();} }
 
-// Swipe on rMid — scroll position (native, no JS needed)
-let sy=0;
-document.getElementById('rMid').addEventListener('touchstart',e=>{sy=e.touches[0].clientY;},{passive:true});
-document.getElementById('rMid').addEventListener('touchend',e=>{ /* natural scroll, no page switching */ },{passive:true});
+// Manual scroll: pause autoscroll during touch, restart from new position after
+let touchScrolling=false;
+let touchRestartTimer=null;
+document.getElementById('rMid').addEventListener('touchstart',()=>{
+  if(!scrollIv) return; // not autoscrolling
+  touchScrolling=true;
+  clearInterval(scrollIv); scrollIv=null;
+  if(touchRestartTimer) clearTimeout(touchRestartTimer);
+},{passive:true});
+
+document.getElementById('rMid').addEventListener('touchend',()=>{
+  if(!touchScrolling) return;
+  touchScrolling=false;
+  // Resume autoscroll from new position after short delay
+  touchRestartTimer=setTimeout(()=>{
+    if(scrollMode){
+      startScrolling();
+    }
+  },600); // 600ms after finger lifts, autoscroll resumes from new position
+},{passive:true});
 
 // pedal/keyboard → song navigation
 document.addEventListener('keydown',e=>{
