@@ -1104,12 +1104,20 @@ function renderPartes(){
         }
         editor.appendChild(trow);
         const arow=document.createElement('div');
-        arow.style.cssText='display:flex;gap:6px;justify-content:flex-end;';
+        arow.style.cssText='display:flex;gap:6px;justify-content:space-between;align-items:center;';
+        // Left: dup + delete
+        const leftBtns=document.createElement('div');leftBtns.style.cssText='display:flex;gap:5px;';
         const dup=document.createElement('button');dup.className='xs';dup.textContent='⧉ duplicar';
-        dup.onclick=()=>{collectPartes();const copy=[...s.partes[letra][ci]];s.partes[letra].splice(ci+1,0,copy);activeCompas=letra+'-'+(ci+1);renderPartes();};
+        dup.onclick=()=>{collectPartes();const copy=JSON.parse(JSON.stringify(normCompas(s.partes[letra][ci])));s.partes[letra].splice(ci+1,0,copy);activeCompas=letra+'-'+(ci+1);renderPartes();};
         const db=document.createElement('button');db.className='xs del';db.textContent='✕ eliminar';
         db.onclick=()=>{collectPartes();if(s.partes[letra].length<=1){alert('Mínimo 1 compás.');return;}s.partes[letra].splice(ci,1);activeCompas=null;renderPartes();};
-        arow.appendChild(dup);arow.appendChild(db);
+        leftBtns.appendChild(dup);leftBtns.appendChild(db);
+        // Right: close (saves automatically)
+        const closeBtn=document.createElement('button');
+        closeBtn.style.cssText='background:#c96a4a;color:#0e0c0b;border:none;padding:4px 14px;border-radius:20px;font-family:DM Mono,monospace;font-size:.62rem;letter-spacing:1px;cursor:pointer;';
+        closeBtn.textContent='✓ cerrar';
+        closeBtn.onclick=()=>{collectPartes();activeCompas=null;renderPartes();};
+        arow.appendChild(leftBtns);arow.appendChild(closeBtn);
         editor.appendChild(arow);
         wrap.appendChild(editor);
       }
@@ -1152,13 +1160,11 @@ function addCompas(letra){
 function addParte(){
   const s=songs[editIdx];
   const existing=Object.keys(s.partes);
-  // Find next available letter
+  // Find next available letter A→B→C→D...
   let letra='A';
   for(let i=0;i<26;i++){
     const l=String.fromCharCode(65+i);
     if(!existing.includes(l)){letra=l;break;}
-    // Also try Abis, Bbis etc
-    if(!existing.includes(l+'bis')){letra=l+'bis';break;}
   }
   promptIm('Nombre de la parte', letra, v=>{
     collectPartes();
@@ -1237,7 +1243,15 @@ function addEstrSec(){
   renderEstructura();
 }
 
-function doneStruct(){collectPartes();save();renderSongs();show('sHome');}
+function doneStruct(){
+  collectPartes();
+  // Close any open compas editor first
+  if(activeCompas!==null){ activeCompas=null; }
+  save();
+  renderSongs();
+  // Go back to wherever we came from (meta editor or home)
+  back();
+}
 
 
 // ═══════════════════════════════════════════════════
