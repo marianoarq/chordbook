@@ -901,15 +901,20 @@ function saveMeta(){
   const t=document.getElementById('mT').value.trim();
   if(!t){alert('Título obligatorio.');return;}
   const slIds=getChips('mChips');
+  const existing=editIdx>=0?songs[editIdx]:{};
   const entry={
-    id:editIdx>=0?songs[editIdx].id:uid(),
+    id:existing.id||uid(),
     title:t, artist:document.getElementById('mA').value.trim(),
     sig:parseInt(document.getElementById('mS').value)||4,
     bpm:parseInt(document.getElementById('mB').value)||120,
     capo:parseInt(document.getElementById('mCapo').value)||0,
     durMM:parseInt(document.getElementById('mDurMM').value)||0,
     durSS:parseInt(document.getElementById('mDurSS').value)||0,
-    slIds, sections:editIdx>=0?songs[editIdx].sections:[]
+    slIds,
+    // Preserve all structural data
+    sections: existing.sections||[],
+    partes:   existing.partes||{},
+    estructura: existing.estructura||[]
   };
   if(editIdx>=0)songs[editIdx]=entry; else{songs.push(entry);editIdx=songs.length-1;}
   syncSlSongs(editIdx,slIds); save(); openStructEd(editIdx);
@@ -1013,7 +1018,7 @@ function renderCompasCompressed(times, resolvedTimes, big){
 let activeCompas = null;
 
 // Normalize compas: accepts ['ch','ch','ch','ch'] or {times,reps}
-function normCompas(c){ return Array.isArray(c)?{times:c,reps:1}:{times:c.times||['','','',''],reps:c.reps||1}; }
+function normCompas(c){ return Array.isArray(c)?{times:c,reps:1,grp:0}:{times:c.times||['','','',''],reps:c.reps||1,grp:c.grp||0}; }
 function setCompasReps(letra,ci,reps){ collectPartes(); const c=songs[editIdx].partes[letra][ci]; if(Array.isArray(c))songs[editIdx].partes[letra][ci]={times:c,reps}; else c.reps=reps; renderPartes(); }
 
 function renderPartes(){
@@ -1038,10 +1043,18 @@ function renderPartes(){
       const reps=comp.reps||1;
       const key=letra+'-'+ci;
       const isOpen=activeCompas===key;
+      const grp=comp.grp||0; // 0=no group, 1=in group
       const wrap=document.createElement('div');
-      wrap.style.cssText='display:flex;flex-direction:column;gap:4px;';
+      wrap.style.cssText='display:flex;flex-direction:column;gap:2px;position:relative;';
 
-      // PILL ROW: pill + reps control
+      // Group bracket indicator above pill
+      if(grp){
+        const gbar=document.createElement('div');
+        gbar.style.cssText='height:4px;border-radius:2px;background:#4a9c6a;margin-bottom:1px;';
+        wrap.appendChild(gbar);
+      }
+
+      // PILL ROW: pill + reps control + group button
       const pillRow=document.createElement('div');
       pillRow.style.cssText='display:flex;align-items:center;gap:5px;';
 
@@ -1051,7 +1064,7 @@ function renderPartes(){
       // Fixed width pill: always 4 time units wide
       const CELL_W = 44; // px per time unit
       const TOTAL_W = CELL_W * 4;
-      pill.style.cssText=`display:flex;align-items:stretch;width:${TOTAL_W}px;min-width:${TOTAL_W}px;height:44px;background:${isOpen?'#2e2825':'#161311'};border:2px solid ${isOpen?'#c96a4a':'#2e2825'};border-radius:6px;cursor:pointer;overflow:hidden;gap:1px;`;
+      pill.style.cssText=`display:flex;align-items:stretch;width:${TOTAL_W}px;min-width:${TOTAL_W}px;height:44px;background:${isOpen?'#2e2825':'#161311'};border:2px solid ${isOpen?'#c96a4a':grp?'#4a9c6a':'#2e2825'};border-radius:6px;cursor:pointer;overflow:hidden;gap:1px;`;
       const makePillContent=(gs)=>gs.length?gs.map((g,gi)=>{
         const w=Math.round(g.span*CELL_W)-(gi>0?1:0);
         const isRep=g.orig==='%';
@@ -1063,7 +1076,23 @@ function renderPartes(){
 
       // Reps control: − × N +
       const repsBox=document.createElement('div');
-      repsBox.style.cssText='display:flex;align-items:center;gap:2px;';
+      repsBox.style.cssText='display:flex;flex-direction:column;gap:2px;align-items:center;';
+      // Group toggle button
+      const grpBtn=document.createElement('button');
+      grpBtn.textContent=grp?'⊃':'[';
+      grpBtn.title=grp?'Quitar del grupo':'Agrupar con siguientes';
+      grpBtn.style.cssText=`width:22px;height:18px;padding:0;border-radius:3px;font-family:DM Mono,monospace;font-size:.65rem;cursor:pointer;border:1px solid ${grp?'#4a9c6a':'#2e2825'};color:${grp?'#4a9c6a':'#5c544c'};background:none;`;
+      grpBtn.onclick=(e)=>{
+        e.stopPropagation();
+        collectPartes();
+        const c=normCompas(songs[editIdx].partes[letra][ci]);
+        c.grp=grp?0:1;
+        songs[editIdx].partes[letra][ci]=c;
+        renderPartes();
+      };
+      // Reps +/−
+      const repsRow=document.createElement('div');
+      repsRow.style.cssText='display:flex;align-items:center;gap:2px;';
       const rminus=document.createElement('button');
       rminus.textContent='−';rminus.className='xs';
       rminus.style.cssText='width:22px;height:22px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;';
@@ -1075,7 +1104,9 @@ function renderPartes(){
       rplus.textContent='+';rplus.className='xs';
       rplus.style.cssText='width:22px;height:22px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;';
       rplus.onclick=(e)=>{e.stopPropagation();const nr=Math.min(16,reps+1);setCompasReps(letra,ci,nr);};
-      repsBox.appendChild(rminus);repsBox.appendChild(rlbl);repsBox.appendChild(rplus);
+      repsRow.appendChild(rminus);repsRow.appendChild(rlbl);repsRow.appendChild(rplus);
+      repsBox.appendChild(grpBtn);
+      repsBox.appendChild(repsRow);
       pillRow.appendChild(repsBox);
       wrap.appendChild(pillRow);
 
@@ -1691,24 +1722,65 @@ function renderAllGrid(){
     html+=`<span style="font-family:'DM Mono',monospace;font-size:.55rem;color:#3a332e;">— ${esc(sec.parte)}</span>`;
     html+=`</div>`;
 
-    // Compases — big pills like the editor
-    html+=`<div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 0;">`;
-    parte.forEach((rawC,ci)=>{
-      const comp=normCompas(rawC);
-      const times=comp.times; const reps=comp.reps||1;
-      const resolved=times.map((ch,ti)=>resolvePercent(s,sec.parte,ci,ti,ch));
-      const groups=compressCompas(times,resolved);
-      const CW=38;
-      html+=`<div style="display:flex;align-items:stretch;width:${CW*4}px;min-width:${CW*4}px;height:42px;background:#161311;border:2px solid #2e2825;border-radius:6px;overflow:hidden;gap:1px;">`;
-      groups.forEach((g,gi)=>{
-        const t=transposeChord(g.ch,rT);
-        const isRep=g.orig==='%';
-        const w=Math.round(g.span*CW)-(gi>0?1:0);
-        html+=`<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:${chordSize};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${gi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
-      });
-      html+=`</div>`;
-      if(reps>1) html+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:#c96a4a;align-self:center;">×${reps}</span>`;
-    });
+    // Compases — with group bracket support
+    html+=`<div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 0;align-items:flex-end;">`;
+    const CW=38;
+    let gi2=0;
+    while(gi2<parte.length){
+      const comp0=normCompas(parte[gi2]);
+      if(comp0.grp){
+        // Collect all consecutive grouped compases
+        let groupEnd=gi2;
+        while(groupEnd+1<parte.length && normCompas(parte[groupEnd+1]).grp) groupEnd++;
+        // Render group bracket
+        html+=`<div style="display:flex;flex-direction:column;gap:2px;">`;
+        // Bracket top line
+        const nInGroup=groupEnd-gi2+1;
+        const groupW=nInGroup*(CW*4+8)-8;
+        html+=`<div style="display:flex;align-items:center;gap:4px;">`;
+        html+=`<div style="height:3px;flex:1;border-top:2px solid #4a9c6a;border-left:2px solid #4a9c6a;border-right:2px solid #4a9c6a;border-radius:3px 3px 0 0;min-width:${groupW}px;"></div>`;
+        html+=`</div>`;
+        // Compases in group
+        html+=`<div style="display:flex;gap:8px;align-items:center;">`;
+        for(let gj=gi2;gj<=groupEnd;gj++){
+          const comp=normCompas(parte[gj]);
+          const times=comp.times; const reps=comp.reps||1;
+          const resolved=times.map((ch,ti)=>resolvePercent(s,sec.parte,gj,ti,ch));
+          const groups=compressCompas(times,resolved);
+          html+=`<div style="display:flex;flex-direction:column;gap:2px;">`;
+          html+=`<div style="display:flex;align-items:stretch;width:${CW*4}px;min-width:${CW*4}px;height:42px;background:#161311;border:2px solid #4a9c6a;border-radius:6px;overflow:hidden;gap:1px;">`;
+          groups.forEach((g,ggi)=>{
+            const t=transposeChord(g.ch,rT);
+            const isRep=g.orig==='%';
+            const w=Math.round(g.span*CW)-(ggi>0?1:0);
+            html+=`<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:${chordSize};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${ggi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
+          });
+          html+=`</div>`;
+          if(reps>1) html+=`<div style="text-align:center;font-family:'Bebas Neue',sans-serif;font-size:.8rem;color:#c96a4a;">×${reps}</div>`;
+          html+=`</div>`;
+        }
+        html+=`</div></div>`;
+        gi2=groupEnd+1;
+      } else {
+        // Normal compas
+        const comp=normCompas(parte[gi2]);
+        const times=comp.times; const reps=comp.reps||1;
+        const resolved=times.map((ch,ti)=>resolvePercent(s,sec.parte,gi2,ti,ch));
+        const groups=compressCompas(times,resolved);
+        html+=`<div style="display:flex;flex-direction:column;gap:2px;">`;
+        html+=`<div style="display:flex;align-items:stretch;width:${CW*4}px;min-width:${CW*4}px;height:42px;background:#161311;border:2px solid #2e2825;border-radius:6px;overflow:hidden;gap:1px;">`;
+        groups.forEach((g,ggi)=>{
+          const t=transposeChord(g.ch,rT);
+          const isRep=g.orig==='%';
+          const w=Math.round(g.span*CW)-(ggi>0?1:0);
+          html+=`<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:${chordSize};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${ggi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
+        });
+        html+=`</div>`;
+        if(reps>1) html+=`<div style="text-align:center;font-family:'Bebas Neue',sans-serif;font-size:.8rem;color:#c96a4a;">×${reps}</div>`;
+        html+=`</div>`;
+        gi2++;
+      }
+    }
     html+=`</div>`;
 
     // Observación
