@@ -1048,8 +1048,15 @@ function renderPartes(){
       const resolved=times.map((ch,ti)=>resolvePercentEdit(s,letra,ci,ti,ch));
       const groups=compressCompas(times,resolved);
       const pill=document.createElement('div');
-      pill.style.cssText=`display:inline-flex;align-items:center;gap:5px;padding:8px 14px;background:${isOpen?'#2e2825':'#161311'};border:2px solid ${isOpen?'#c96a4a':'#2e2825'};border-radius:6px;cursor:pointer;min-width:50px;`;
-      const makePillContent=(gs)=>gs.length?gs.map((g,gi)=>(gi>0?'<span style="color:#3a332e;font-size:.7rem;"> — </span>':'')+`<span style="font-family:'DM Mono',monospace;font-size:1.05rem;font-weight:500;color:${g.orig==='%'?'#5c544c':'#e8896a'};">${g.ch||'—'}</span>`).join(''):'<span style="color:#3a332e;font-size:.8rem;">vacío</span>';
+      // Fixed width pill: always 4 time units wide
+      const CELL_W = 44; // px per time unit
+      const TOTAL_W = CELL_W * 4;
+      pill.style.cssText=`display:flex;align-items:stretch;width:${TOTAL_W}px;min-width:${TOTAL_W}px;height:44px;background:${isOpen?'#2e2825':'#161311'};border:2px solid ${isOpen?'#c96a4a':'#2e2825'};border-radius:6px;cursor:pointer;overflow:hidden;gap:1px;`;
+      const makePillContent=(gs)=>gs.length?gs.map((g,gi)=>{
+        const w=Math.round(g.span*CELL_W)-(gi>0?1:0);
+        const isRep=g.orig==='%';
+        return `<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:${g.span>=2?'1.05rem':'.9rem'};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${gi>0?'border-left:1px solid #2e2825':''}">${g.ch||'—'}</div>`;
+      }).join(''):'<div style="display:flex;align-items:center;justify-content:center;width:100%;color:#3a332e;font-size:.8rem;">vacío</div>';
       pill.innerHTML=makePillContent(groups);
       pill.onclick=()=>{ collectPartes(); activeCompas=isOpen?null:key; renderPartes(); };
       pillRow.appendChild(pill);
@@ -1655,15 +1662,16 @@ function renderAllGrid(){
       const times=comp.times; const reps=comp.reps||1;
       const resolved=times.map((ch,ti)=>resolvePercent(s,letra,ci,ti,ch));
       const groups=compressCompas(times,resolved);
-      html+=`<div style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;background:#161311;border:1px solid #2e2825;border-radius:6px;">`;
+      const PR=28;
+      html+=`<div style="display:flex;align-items:stretch;width:${PR*4}px;min-width:${PR*4}px;height:30px;background:#161311;border:1px solid #2e2825;border-radius:5px;overflow:hidden;gap:1px;">`;
       groups.forEach((g,gi)=>{
         const t=transposeChord(g.ch,rT);
         const isRep=g.orig==='%';
-        if(gi>0) html+=`<span style="color:#3a332e;font-size:.8rem;padding:0 1px;"> — </span>`;
-        html+=`<span style="font-family:'DM Mono',monospace;font-size:${chordSize};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};">${esc(t)}</span>`;
+        const w=Math.round(g.span*PR)-(gi>0?1:0);
+        html+=`<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:.72rem;font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${gi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
       });
-      if(reps>1) html+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.8rem;color:#c96a4a;margin-left:2px;">×${reps}</span>`;
       html+=`</div>`;
+      if(reps>1) html+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.75rem;color:#c96a4a;align-self:center;">×${reps}</span>`;
     });
     html+=`</div>`;
   });
@@ -1690,15 +1698,16 @@ function renderAllGrid(){
       const times=comp.times; const reps=comp.reps||1;
       const resolved=times.map((ch,ti)=>resolvePercent(s,sec.parte,ci,ti,ch));
       const groups=compressCompas(times,resolved);
-      html+=`<div style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;background:#161311;border:2px solid #2e2825;border-radius:8px;">`;
+      const CW=38;
+      html+=`<div style="display:flex;align-items:stretch;width:${CW*4}px;min-width:${CW*4}px;height:42px;background:#161311;border:2px solid #2e2825;border-radius:6px;overflow:hidden;gap:1px;">`;
       groups.forEach((g,gi)=>{
         const t=transposeChord(g.ch,rT);
         const isRep=g.orig==='%';
-        if(gi>0) html+=`<span style="color:#3a332e;font-size:.85rem;"> — </span>`;
-        html+=`<span style="font-family:'DM Mono',monospace;font-size:${chordSize};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};">${esc(t)}</span>`;
+        const w=Math.round(g.span*CW)-(gi>0?1:0);
+        html+=`<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:${chordSize};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${gi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
       });
-      if(reps>1) html+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:#c96a4a;margin-left:2px;">×${reps}</span>`;
       html+=`</div>`;
+      if(reps>1) html+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:#c96a4a;align-self:center;">×${reps}</span>`;
     });
     html+=`</div>`;
 
