@@ -1767,108 +1767,117 @@ function resolvePercent(s, letra, ci, ti, ch){
 
 
 // Render a compas pill for the reader
-function renderCompasPill(comp, letra, ci, s, CW, chordSize, transpose){
+function renderCompasPill(comp, letra, ci, s, CW, chordSize, transpose, inGrp){
   const times=comp.times||['','','',''];
   const reps=comp.reps||1;
   const resolved=times.map((ch,ti)=>resolvePercent(s,letra,ci,ti,ch));
   const groups=compressCompas(times,resolved);
-  let h=`<div style="display:flex;align-items:stretch;width:${CW*4}px;min-width:${CW*4}px;height:52px;background:#161311;border:2px solid #2e2825;border-radius:8px;overflow:hidden;gap:1px;">`;
+  let h=`<div style="flex:1;display:flex;align-items:stretch;height:52px;background:#161311;border:2px solid ${inGrp?'#4a9c6a':'#2e2825'};border-radius:8px;overflow:hidden;gap:1px;">`;
   groups.forEach((g,gi)=>{
     const t=transposeChord(g.ch,transpose);
     const isRep=g.orig==='%';
-    const w=Math.round(g.span*CW)-(gi>0?1:0);
-    h+=`<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:${chordSize};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${gi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
+    h+=`<div style="flex:${g.span};display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:${chordSize};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${gi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
   });
   h+=`</div>`;
   return h;
 }
 
-// Render compases with nested [ ] groups as tall vertical bracket blocks
+// Grid layout: 2 compases per row, brackets as vertical lines on sides
 function renderCompasesWithGroups(compases, letra, s, CW, chordSize, transpose){
-  // Build a tree of segments: each segment is either a lone compas or a group
-  // A group contains rows of compases and has open/close reps
-  // We process linearly tracking open groups
+  const COLS=2;
 
-  // First pass: identify group spans
-  // Each compas can open/close multiple groups
-  // We'll render row by row, where each "row" is compases between line breaks
-  // For now, wrap=true so compases wrap naturally, and groups get a bracket wrapper
-
-  // Simple approach: render all compases in a flex-wrap row
-  // Groups get wrapped in a relative div with bracket pseudo-elements
-
-  // Collect group spans: {id, openAt, closeAt, reps}
-  const groupSpans = {};
+  // Identify group spans
+  const groupSpans={};
   compases.forEach((rawC,ci)=>{
     const c=normCompas(rawC);
-    (c.grpOpen||[]).forEach(id=>{
-      groupSpans[id]={id,openAt:ci,closeAt:ci,reps:1};
-    });
-    (c.grpClose||[]).forEach(gc=>{
-      if(groupSpans[gc.id]){groupSpans[gc.id].closeAt=ci;groupSpans[gc.id].reps=gc.reps;}
-    });
+    (c.grpOpen||[]).forEach(id=>{ groupSpans[id]={id,openAt:ci,closeAt:ci,reps:1}; });
+    (c.grpClose||[]).forEach(gc=>{ if(groupSpans[gc.id]){groupSpans[gc.id].closeAt=ci;groupSpans[gc.id].reps=gc.reps;} });
   });
   const spans=Object.values(groupSpans).sort((a,b)=>a.openAt-b.openAt);
 
-  // Render: wrap each group in a bracket box
-  // Strategy: render segments linearly
-  // We'll build HTML with group wrappers
-
-  let h='<div style="display:flex;flex-direction:column;gap:6px;">';
-
-  // Find top-level groups (not nested in another group at their openAt)
-  // and lone compases
-  let ci=0;
-  while(ci<compases.length){
-    // Check if any group opens here
-    const grp=spans.find(sp=>sp.openAt===ci);
-    if(grp){
-      // Render group block with brackets
-      const groupCompases=compases.slice(grp.openAt,grp.closeAt+1);
-      h+=`<div style="display:flex;align-items:stretch;gap:0;">`;
-      // Left bracket
-      h+=`<div style="display:flex;align-items:center;padding:0 4px;">`;
-      h+=`<div style="width:4px;height:100%;border-left:3px solid #4a9c6a;border-top:3px solid #4a9c6a;border-bottom:3px solid #4a9c6a;border-radius:4px 0 0 4px;min-height:52px;"></div>`;
-      h+=`</div>`;
-      // Inner compases in wrapped rows
-      h+=`<div style="display:flex;flex-wrap:wrap;gap:6px;flex:1;padding:4px 0;">`;
-      groupCompases.forEach((rawC2,gci)=>{
-        const comp2=normCompas(rawC2);
-        const actualCi=grp.openAt+gci;
-        // Check for nested groups
-        const nestedOpen=spans.filter(sp=>sp.openAt===actualCi&&sp.id!==grp.id);
-        const nestedClose=spans.filter(sp=>sp.closeAt===actualCi&&sp.id!==grp.id);
-        nestedOpen.forEach(()=>{
-          h+=`<span style="font-family:'DM Mono',monospace;font-size:2rem;color:#4a9c6a;line-height:1;align-self:center;">[</span>`;
-        });
-        h+=renderCompasPill(comp2,letra,actualCi,s,CW,chordSize,transpose);
-        nestedClose.forEach(ng=>{
-          h+=`<span style="font-family:'DM Mono',monospace;font-size:2rem;color:#4a9c6a;line-height:1;align-self:center;">]</span>`;
-          h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:#4a9c6a;align-self:center;">×${ng.reps}</span>`;
-        });
-        const compReps=comp2.reps||1;
-        if(compReps>1) h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.8rem;color:#c96a4a;align-self:flex-end;margin-bottom:4px;">×${compReps}</span>`;
-      });
-      h+=`</div>`;
-      // Right bracket + reps
-      h+=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 4px;gap:2px;">`;
-      h+=`<div style="width:4px;height:100%;border-right:3px solid #4a9c6a;border-top:3px solid #4a9c6a;border-bottom:3px solid #4a9c6a;border-radius:0 4px 4px 0;min-height:52px;"></div>`;
-      h+=`</div>`;
-      if(grp.reps>1) h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:#4a9c6a;align-self:center;padding-left:4px;">×${grp.reps}</span>`;
-      h+=`</div>`;
-      ci=grp.closeAt+1;
-    } else {
-      // Lone compas (not in any top-level group)
-      const comp=normCompas(compases[ci]);
-      const compReps=comp.reps||1;
-      h+=`<div style="display:flex;align-items:center;gap:4px;">`;
-      h+=renderCompasPill(comp,letra,ci,s,CW,chordSize,transpose);
-      if(compReps>1) h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:#c96a4a;align-self:center;">×${compReps}</span>`;
-      h+=`</div>`;
-      ci++;
+  // For each compas, check what depth of groups it's in
+  function depthAt(ci){
+    let d=0;
+    for(let x=0;x<=ci;x++){
+      const c=normCompas(compases[x]);
+      d+=(c.grpOpen||[]).length;
+      d-=(c.grpClose||[]).length;
     }
+    return d;
   }
-  h+='</div>';
+
+  // Build rows of COLS compases
+  const rows=[];
+  for(let i=0;i<compases.length;i+=COLS){
+    rows.push(compases.slice(i,i+COLS).map((c,j)=>({rawC:c,ci:i+j})));
+  }
+
+  // For each row, find which groups span it (use for bracket rendering)
+  function groupsSpanningRow(rowIdx){
+    const firstCi=rowIdx*COLS;
+    const lastCi=Math.min(firstCi+COLS-1,compases.length-1);
+    return spans.filter(sp=>sp.openAt<=firstCi && sp.closeAt>=lastCi);
+  }
+  function groupsOpeningAtRow(rowIdx){
+    const firstCi=rowIdx*COLS;
+    return spans.filter(sp=>Math.floor(sp.openAt/COLS)===rowIdx);
+  }
+  function groupsClosingAtRow(rowIdx){
+    const lastCi=rowIdx*COLS;
+    return spans.filter(sp=>Math.floor(sp.closeAt/COLS)===rowIdx);
+  }
+
+  // Count max bracket depth for left margin
+  const maxDepth=spans.length>0?Math.max(...rows.map((_,ri)=>groupsSpanningRow(ri).length+(groupsOpeningAtRow(ri).length))):0;
+  const bracketW=14; // px per bracket level
+
+  let h=`<div style="display:flex;flex-direction:column;gap:6px;width:100%;">`;
+
+  rows.forEach((row,ri)=>{
+    const spanning=groupsSpanningRow(ri);
+    const opening=groupsOpeningAtRow(ri);
+    const closing=groupsClosingAtRow(ri);
+    const allGroups=[...new Set([...spanning,...opening,...closing])];
+
+    h+=`<div style="display:flex;align-items:stretch;gap:0;">`;
+
+    // Left brackets
+    allGroups.forEach(grp=>{
+      const isFirst=Math.floor(grp.openAt/COLS)===ri;
+      const isLast=Math.floor(grp.closeAt/COLS)===ri;
+      const borderTop=isFirst?'2px solid #4a9c6a':'none';
+      const borderBottom=isLast?'2px solid #4a9c6a':'none';
+      h+=`<div style="width:${bracketW}px;border-left:2px solid #4a9c6a;border-top:${borderTop};border-bottom:${borderBottom};${isFirst?'border-radius:4px 0 0 0':''}${isLast?'border-radius:0 0 0 4px':''}margin-right:2px;flex-shrink:0;"></div>`;
+    });
+
+    // Compases
+    h+=`<div style="display:flex;gap:6px;flex:1;align-items:stretch;">`;
+    row.forEach(({rawC,ci})=>{
+      const comp=normCompas(rawC);
+      const inGrp=depthAt(ci)>0;
+      const compReps=comp.reps||1;
+      h+=renderCompasPill(comp,letra,ci,s,CW,chordSize,transpose,inGrp);
+      if(compReps>1) h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.8rem;color:#c96a4a;align-self:center;flex-shrink:0;">×${compReps}</span>`;
+    });
+    // Pad if last row has only 1 compas
+    if(row.length<COLS) h+=`<div style="flex:1;"></div>`;
+    h+=`</div>`;
+
+    // Right brackets
+    allGroups.forEach(grp=>{
+      const isFirst=Math.floor(grp.openAt/COLS)===ri;
+      const isLast=Math.floor(grp.closeAt/COLS)===ri;
+      const borderTop=isFirst?'2px solid #4a9c6a':'none';
+      const borderBottom=isLast?'2px solid #4a9c6a':'none';
+      h+=`<div style="width:${bracketW}px;border-right:2px solid #4a9c6a;border-top:${borderTop};border-bottom:${borderBottom};margin-left:2px;flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;padding-right:2px;">`;
+      if(isLast && grp.reps>1) h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.85rem;color:#4a9c6a;position:absolute;margin-left:${bracketW+2}px;white-space:nowrap;">×${grp.reps}</span>`;
+      h+=`</div>`;
+    });
+
+    h+=`</div>`;
+  });
+
+  h+=`</div>`;
   return h;
 }
 
