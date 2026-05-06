@@ -7,18 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ChordBook">
 <meta name="theme-color" content="#0e0c0b">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon.png">
 <title>ChordBook</title>
-<script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('sw.js',{scope:'/chordbook/'})
-      .then(()=>console.log('SW ok'))
-      .catch(e=>console.log('SW fail',e));
-  });
-}
-</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@0,600;1,400;1,600&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500&display=swap');
 
@@ -1018,7 +1007,27 @@ function renderCompasCompressed(times, resolvedTimes, big){
 let activeCompas = null;
 
 // Normalize compas: accepts ['ch','ch','ch','ch'] or {times,reps}
-function normCompas(c){ return Array.isArray(c)?{times:c,reps:1,grp:0}:{times:c.times||['','','',''],reps:c.reps||1,grp:c.grp||0}; }
+function normCompas(c){
+  if(Array.isArray(c)) return {times:c,reps:1,grpOpen:[],grpClose:[]};
+  return {
+    times:c.times||['','','',''],
+    reps:c.reps||1,
+    grpOpen:c.grpOpen||[],
+    grpClose:c.grpClose||[]
+  };
+}
+function nextGrpId(partes){
+  // Find max group id used across all partes
+  let max=0;
+  Object.values(partes).forEach(compases=>{
+    compases.forEach(rawC=>{
+      const c=normCompas(rawC);
+      (c.grpOpen||[]).forEach(id=>{ if(id>max)max=id; });
+      (c.grpClose||[]).forEach(g=>{ if(g.id>max)max=g.id; });
+    });
+  });
+  return max+1;
+}
 function setCompasReps(letra,ci,reps){ collectPartes(); const c=songs[editIdx].partes[letra][ci]; if(Array.isArray(c))songs[editIdx].partes[letra][ci]={times:c,reps}; else c.reps=reps; renderPartes(); }
 
 function renderPartes(){
@@ -1041,25 +1050,41 @@ function renderPartes(){
       const comp=normCompas(rawC);
       const times=comp.times; while(times.length<4) times.push('');
       const reps=comp.reps||1;
+      const grpOpen=comp.grpOpen||[];
+      const grpClose=comp.grpClose||[];
       const key=letra+'-'+ci;
       const isOpen=activeCompas===key;
-      const grp=comp.grp||0; // 0=no group, 1=in group
+
+      // Check if this compas is inside any group
+      let depth=0;
+      for(let x=0;x<=ci;x++){
+        const cx=normCompas(s.partes[letra][x]);
+        depth+=cx.grpOpen.length;
+        depth-=cx.grpClose.length;
+      }
+      const inGroup=depth>0||grpOpen.length>0;
+
       const wrap=document.createElement('div');
-      wrap.style.cssText='display:flex;flex-direction:column;gap:2px;position:relative;';
+      wrap.style.cssText='display:flex;align-items:center;gap:2px;';
 
-      // No top indicator needed - the green border on the pill shows grouping
+      // Opening [ brackets
+      grpOpen.forEach(()=>{
+        const br=document.createElement('span');
+        br.style.cssText='font-family:DM Mono,monospace;font-size:2.4rem;color:#4a9c6a;line-height:1;font-weight:300;user-select:none;';
+        br.textContent='[';
+        wrap.appendChild(br);
+      });
 
-      // PILL ROW: pill + reps control + group button
-      const pillRow=document.createElement('div');
-      pillRow.style.cssText='display:flex;align-items:center;gap:5px;';
+      // Pill + controls column
+      const pillCol=document.createElement('div');
+      pillCol.style.cssText='display:flex;flex-direction:column;gap:3px;align-items:center;';
 
       const resolved=times.map((ch,ti)=>resolvePercentEdit(s,letra,ci,ti,ch));
       const groups=compressCompas(times,resolved);
       const pill=document.createElement('div');
-      // Fixed width pill: always 4 time units wide
-      const CELL_W = 44; // px per time unit
-      const TOTAL_W = CELL_W * 4;
-      pill.style.cssText=`display:flex;align-items:stretch;width:${TOTAL_W}px;min-width:${TOTAL_W}px;height:44px;background:${isOpen?'#2e2825':'#161311'};border:2px solid ${isOpen?'#c96a4a':grp?'#4a9c6a':'#2e2825'};border-radius:6px;cursor:pointer;overflow:hidden;gap:1px;`;
+      const CELL_W=44, TOTAL_W=CELL_W*4;
+      const borderCol=isOpen?'#c96a4a':inGroup?'#4a9c6a':'#2e2825';
+      pill.style.cssText=`display:flex;align-items:stretch;width:${TOTAL_W}px;min-width:${TOTAL_W}px;height:44px;background:${isOpen?'#2e2825':'#161311'};border:2px solid ${borderCol};border-radius:6px;cursor:pointer;overflow:hidden;gap:1px;`;
       const makePillContent=(gs)=>gs.length?gs.map((g,gi)=>{
         const w=Math.round(g.span*CELL_W)-(gi>0?1:0);
         const isRep=g.orig==='%';
@@ -1067,43 +1092,118 @@ function renderPartes(){
       }).join(''):'<div style="display:flex;align-items:center;justify-content:center;width:100%;color:#3a332e;font-size:.8rem;">vacío</div>';
       pill.innerHTML=makePillContent(groups);
       pill.onclick=()=>{ collectPartes(); activeCompas=isOpen?null:key; renderPartes(); };
-      pillRow.appendChild(pill);
+      pillCol.appendChild(pill);
 
-      // Reps control: − × N +
-      const repsBox=document.createElement('div');
-      repsBox.style.cssText='display:flex;flex-direction:column;gap:2px;align-items:center;';
-      // Group toggle button
-      const grpBtn=document.createElement('button');
-      grpBtn.textContent=grp?'⊃':'[';
-      grpBtn.title=grp?'Quitar del grupo':'Agrupar con siguientes';
-      grpBtn.style.cssText=`width:22px;height:18px;padding:0;border-radius:3px;font-family:DM Mono,monospace;font-size:.65rem;cursor:pointer;border:1px solid ${grp?'#4a9c6a':'#2e2825'};color:${grp?'#4a9c6a':'#5c544c'};background:none;`;
-      grpBtn.onclick=(e)=>{
-        e.stopPropagation();
-        collectPartes();
-        const c=normCompas(songs[editIdx].partes[letra][ci]);
-        c.grp=grp?0:1;
-        songs[editIdx].partes[letra][ci]=c;
-        renderPartes();
+      // Controls: [+ open group | − ×N + reps | ] close group
+      const ctrlRow=document.createElement('div');
+      ctrlRow.style.cssText='display:flex;align-items:center;gap:3px;justify-content:center;flex-wrap:wrap;';
+
+      // [+ button — open new group starting here
+      const openBtn=document.createElement('button');
+      openBtn.className='xs'; openBtn.textContent='[+';
+      openBtn.title='Abrir grupo aquí';
+      openBtn.onclick=(e)=>{
+        e.stopPropagation(); collectPartes();
+        const c=normCompas(s.partes[letra][ci]);
+        const newId=nextGrpId(s.partes);
+        c.grpOpen=[...c.grpOpen,newId];
+        s.partes[letra][ci]=c; renderPartes();
       };
-      // Reps +/−
-      const repsRow=document.createElement('div');
-      repsRow.style.cssText='display:flex;align-items:center;gap:2px;';
-      const rminus=document.createElement('button');
-      rminus.textContent='−';rminus.className='xs';
-      rminus.style.cssText='width:22px;height:22px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;';
-      rminus.onclick=(e)=>{e.stopPropagation();const nr=Math.max(1,reps-1);setCompasReps(letra,ci,nr);};
+      ctrlRow.appendChild(openBtn);
+
+      // Existing open group remove buttons
+      grpOpen.forEach((id)=>{
+        const rmBtn=document.createElement('button');
+        rmBtn.className='xs del'; rmBtn.textContent='[✕';
+        rmBtn.title='Quitar [ aquí';
+        rmBtn.onclick=(e)=>{
+          e.stopPropagation(); collectPartes();
+          const c=normCompas(s.partes[letra][ci]);
+          c.grpOpen=c.grpOpen.filter(x=>x!==id);
+          s.partes[letra][ci]=c; renderPartes();
+        };
+        ctrlRow.appendChild(rmBtn);
+      });
+
+      // Reps − ×N +
+      const rminus=document.createElement('button'); rminus.textContent='−'; rminus.className='xs';
+      rminus.style.cssText='width:20px;height:20px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;';
+      rminus.onclick=(e)=>{e.stopPropagation();setCompasReps(letra,ci,Math.max(1,reps-1));};
       const rlbl=document.createElement('span');
-      rlbl.style.cssText='font-family:Bebas Neue,sans-serif;font-size:.9rem;color:'+(reps>1?'#e8896a':'#3a332e')+';min-width:28px;text-align:center;';
-      rlbl.textContent=reps>1?'×'+reps:'×1';
-      const rplus=document.createElement('button');
-      rplus.textContent='+';rplus.className='xs';
-      rplus.style.cssText='width:22px;height:22px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;';
-      rplus.onclick=(e)=>{e.stopPropagation();const nr=Math.min(16,reps+1);setCompasReps(letra,ci,nr);};
-      repsRow.appendChild(rminus);repsRow.appendChild(rlbl);repsRow.appendChild(rplus);
-      repsBox.appendChild(grpBtn);
-      repsBox.appendChild(repsRow);
-      pillRow.appendChild(repsBox);
-      wrap.appendChild(pillRow);
+      rlbl.style.cssText='font-family:Bebas Neue,sans-serif;font-size:.85rem;color:'+(reps>1?'#e8896a':'#3a332e')+';min-width:24px;text-align:center;';
+      rlbl.textContent='×'+reps;
+      const rplus=document.createElement('button'); rplus.textContent='+'; rplus.className='xs';
+      rplus.style.cssText='width:20px;height:20px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;';
+      rplus.onclick=(e)=>{e.stopPropagation();setCompasReps(letra,ci,Math.min(16,reps+1));};
+      ctrlRow.appendChild(rminus); ctrlRow.appendChild(rlbl); ctrlRow.appendChild(rplus);
+
+      // ] button — close last open group after this compas
+      const openStack=[];
+      for(let x=0;x<=ci;x++){
+        const cx=normCompas(s.partes[letra][x]);
+        cx.grpOpen.forEach(id=>openStack.push(id));
+        cx.grpClose.forEach(g=>{ const idx=openStack.lastIndexOf(g.id); if(idx>=0) openStack.splice(idx,1); });
+      }
+      if(openStack.length>0){
+        const closeBtn=document.createElement('button');
+        closeBtn.className='xs'; closeBtn.textContent='] +';
+        closeBtn.style.cssText='color:#4a9c6a;border-color:#4a9c6a;';
+        closeBtn.title='Cerrar grupo aquí';
+        closeBtn.onclick=(e)=>{
+          e.stopPropagation(); collectPartes();
+          const c=normCompas(s.partes[letra][ci]);
+          const idToClose=openStack[openStack.length-1];
+          c.grpClose=[...c.grpClose,{id:idToClose,reps:2}];
+          s.partes[letra][ci]=c; renderPartes();
+        };
+        ctrlRow.appendChild(closeBtn);
+      }
+
+      pillCol.appendChild(ctrlRow);
+      wrap.appendChild(pillCol);
+
+      // Closing ] brackets with reps
+      grpClose.forEach((gc,gci)=>{
+        const closeCol=document.createElement('div');
+        closeCol.style.cssText='display:flex;flex-direction:column;align-items:center;gap:1px;';
+        const br=document.createElement('span');
+        br.style.cssText='font-family:DM Mono,monospace;font-size:2.4rem;color:#4a9c6a;line-height:1;font-weight:300;user-select:none;';
+        br.textContent=']';
+        closeCol.appendChild(br);
+        // Reps row for this bracket
+        const gcRow=document.createElement('div');
+        gcRow.style.cssText='display:flex;align-items:center;gap:2px;';
+        const gcM=document.createElement('button'); gcM.className='xs'; gcM.textContent='−';
+        gcM.style.cssText='width:16px;height:16px;padding:0;border-radius:50%;';
+        gcM.onclick=(e)=>{
+          e.stopPropagation(); collectPartes();
+          const c=normCompas(s.partes[letra][ci]);
+          c.grpClose[gci].reps=Math.max(1,gc.reps-1);
+          s.partes[letra][ci]=c; renderPartes();
+        };
+        const gcL=document.createElement('span');
+        gcL.style.cssText='font-family:Bebas Neue,sans-serif;font-size:.85rem;color:#4a9c6a;min-width:22px;text-align:center;';
+        gcL.textContent='×'+gc.reps;
+        const gcP=document.createElement('button'); gcP.className='xs'; gcP.textContent='+';
+        gcP.style.cssText='width:16px;height:16px;padding:0;border-radius:50%;';
+        gcP.onclick=(e)=>{
+          e.stopPropagation(); collectPartes();
+          const c=normCompas(s.partes[letra][ci]);
+          c.grpClose[gci].reps=Math.min(16,gc.reps+1);
+          s.partes[letra][ci]=c; renderPartes();
+        };
+        const gcX=document.createElement('button'); gcX.className='xs del'; gcX.textContent='✕';
+        gcX.style.cssText='width:14px;height:14px;padding:0;font-size:.45rem;';
+        gcX.onclick=(e)=>{
+          e.stopPropagation(); collectPartes();
+          const c=normCompas(s.partes[letra][ci]);
+          c.grpClose.splice(gci,1);
+          s.partes[letra][ci]=c; renderPartes();
+        };
+        gcRow.appendChild(gcM); gcRow.appendChild(gcL); gcRow.appendChild(gcP); gcRow.appendChild(gcX);
+        closeCol.appendChild(gcRow);
+        wrap.appendChild(closeCol);
+      });
 
       // EXPANDED EDITOR
       if(isOpen){
@@ -1665,6 +1765,48 @@ function resolvePercent(s, letra, ci, ti, ch){
   return '%';
 }
 
+
+// Render a compas pill for the reader
+function renderCompasPill(comp, letra, ci, s, CW, chordSize, transpose){
+  const times=comp.times||['','','',''];
+  const reps=comp.reps||1;
+  const resolved=times.map((ch,ti)=>resolvePercent(s,letra,ci,ti,ch));
+  const groups=compressCompas(times,resolved);
+  let h=`<div style="display:flex;flex-direction:column;gap:2px;align-items:center;">`;
+  h+=`<div style="display:flex;align-items:stretch;width:${CW*4}px;min-width:${CW*4}px;height:40px;background:#161311;border:2px solid #2e2825;border-radius:6px;overflow:hidden;gap:1px;">`;
+  groups.forEach((g,gi)=>{
+    const t=transposeChord(g.ch,transpose);
+    const isRep=g.orig==='%';
+    const w=Math.round(g.span*CW)-(gi>0?1:0);
+    h+=`<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:${chordSize};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${gi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
+  });
+  h+=`</div>`;
+  if(reps>1) h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.8rem;color:#c96a4a;">×${reps}</span>`;
+  h+=`</div>`;
+  return h;
+}
+
+// Render compases array with nested [ ] group support
+function renderCompasesWithGroups(compases, letra, s, CW, chordSize, transpose){
+  let h='<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">';
+  compases.forEach((rawC,ci)=>{
+    const comp=normCompas(rawC);
+    // Opening brackets
+    (comp.grpOpen||[]).forEach(()=>{
+      h+=`<span style="font-family:'DM Mono',monospace;font-size:${CW>=38?'2.8rem':'2rem'};color:#4a9c6a;line-height:1;font-weight:300;">[</span>`;
+    });
+    // Pill
+    h+=renderCompasPill(comp,letra,ci,s,CW,chordSize,transpose);
+    // Closing brackets with reps
+    (comp.grpClose||[]).forEach(gc=>{
+      h+=`<span style="font-family:'DM Mono',monospace;font-size:${CW>=38?'2.8rem':'2rem'};color:#4a9c6a;line-height:1;font-weight:300;">]</span>`;
+      h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:${CW>=38?'1.1rem':'.85rem'};color:#4a9c6a;align-self:center;">×${gc.reps}</span>`;
+    });
+  });
+  h+='</div>';
+  return h;
+}
+
 function renderAllGrid(){
   const s=rSong;
   if(!s.partes||!s.estructura||!Object.keys(s.partes).length){
@@ -1681,57 +1823,12 @@ function renderAllGrid(){
   html+=`<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #2e2825;">`;
   html+=`<div style="font-family:'DM Mono',monospace;font-size:.5rem;color:#5c544c;letter-spacing:2px;margin-bottom:10px;">PARTES</div>`;
   Object.entries(s.partes).forEach(([letra,compases])=>{
-    html+=`<div style="margin-bottom:10px;display:flex;align-items:flex-end;gap:6px;flex-wrap:wrap;">`;
-    html+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;color:#c96a4a;letter-spacing:2px;flex-shrink:0;min-width:32px;align-self:center;">${esc(letra)}</span>`;
-    const PR=28;
-    let pi=0;
-    while(pi<compases.length){
-      const comp0=normCompas(compases[pi]);
-      if(comp0.grp){
-        let pend=pi;
-        while(pend+1<compases.length && normCompas(compases[pend+1]).grp) pend++;
-        // [ bracket
-        html+=`<span style="font-family:'DM Mono',monospace;font-size:2rem;color:#4a9c6a;line-height:1;align-self:center;margin-right:-2px;">[</span>`;
-        for(let pj=pi;pj<=pend;pj++){
-          const comp=normCompas(compases[pj]);
-          const times=comp.times; const reps=comp.reps||1;
-          const resolved=times.map((ch,ti)=>resolvePercent(s,letra,pj,ti,ch));
-          const groups=compressCompas(times,resolved);
-          html+=`<div style="display:flex;flex-direction:column;gap:2px;align-items:center;">`;
-          html+=`<div style="display:flex;align-items:stretch;width:${PR*4}px;min-width:${PR*4}px;height:30px;background:#161311;border:1px solid #4a9c6a;border-radius:5px;overflow:hidden;gap:1px;">`;
-          groups.forEach((g,gi)=>{
-            const t=transposeChord(g.ch,rT);
-            const isRep=g.orig==='%';
-            const w=Math.round(g.span*PR)-(gi>0?1:0);
-            html+=`<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:.72rem;font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${gi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
-          });
-          html+=`</div>`;
-          if(reps>1) html+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.65rem;color:#c96a4a;">×${reps}</span>`;
-          html+=`</div>`;
-          if(pj<pend) html+=`<span style="color:#3a332e;align-self:center;font-size:.7rem;">·</span>`;
-        }
-        // ] ×N bracket close
-        html+=`<span style="font-family:'DM Mono',monospace;font-size:2rem;color:#4a9c6a;line-height:1;align-self:center;margin-left:-2px;">]</span>`;
-        pi=pend+1;
-      } else {
-        const comp=normCompas(compases[pi]);
-        const times=comp.times; const reps=comp.reps||1;
-        const resolved=times.map((ch,ti)=>resolvePercent(s,letra,pi,ti,ch));
-        const groups=compressCompas(times,resolved);
-        html+=`<div style="display:flex;flex-direction:column;gap:2px;align-items:center;">`;
-        html+=`<div style="display:flex;align-items:stretch;width:${PR*4}px;min-width:${PR*4}px;height:30px;background:#161311;border:1px solid #2e2825;border-radius:5px;overflow:hidden;gap:1px;">`;
-        groups.forEach((g,gi)=>{
-          const t=transposeChord(g.ch,rT);
-          const isRep=g.orig==='%';
-          const w=Math.round(g.span*PR)-(gi>0?1:0);
-          html+=`<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:.72rem;font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${gi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
-        });
-        html+=`</div>`;
-        if(reps>1) html+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.65rem;color:#c96a4a;">×${reps}</span>`;
-        html+=`</div>`;
-        pi++;
-      }
-    }
+    // Letter on its own line for clean alignment
+    html+=`<div style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:#c96a4a;letter-spacing:2px;margin-bottom:4px;">${esc(letra)}</div>`;
+    html+=`<div style="margin-bottom:12px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">`;
+    // Use helper for nested group rendering
+    html += renderCompasesWithGroups(compases, letra, s, 34, chordSize, rT).replace(/<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">/,'<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:2px;">');
+    html+=`</div>`;
     html+=`</div>`;
   });
   html+=`</div>`;
@@ -1750,58 +1847,8 @@ function renderAllGrid(){
     html+=`<span style="font-family:'DM Mono',monospace;font-size:.55rem;color:#3a332e;">— ${esc(sec.parte)}</span>`;
     html+=`</div>`;
 
-    // Compases — with group bracket support
-    html+=`<div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 0;align-items:flex-end;">`;
-    const CW=38;
-    let gi2=0;
-    while(gi2<parte.length){
-      const comp0=normCompas(parte[gi2]);
-      if(comp0.grp){
-        let groupEnd=gi2;
-        while(groupEnd+1<parte.length && normCompas(parte[groupEnd+1]).grp) groupEnd++;
-        // [ bracket open
-        html+=`<span style="font-family:'DM Mono',monospace;font-size:3rem;color:#4a9c6a;line-height:1;align-self:center;margin-right:-4px;">[</span>`;
-        for(let gj=gi2;gj<=groupEnd;gj++){
-          const comp=normCompas(parte[gj]);
-          const times=comp.times; const reps=comp.reps||1;
-          const resolved=times.map((ch,ti)=>resolvePercent(s,sec.parte,gj,ti,ch));
-          const groups=compressCompas(times,resolved);
-          html+=`<div style="display:flex;flex-direction:column;gap:3px;align-items:center;">`;
-          html+=`<div style="display:flex;align-items:stretch;width:${CW*4}px;min-width:${CW*4}px;height:42px;background:#161311;border:2px solid #4a9c6a;border-radius:6px;overflow:hidden;gap:1px;">`;
-          groups.forEach((g,ggi)=>{
-            const t=transposeChord(g.ch,rT);
-            const isRep=g.orig==='%';
-            const w=Math.round(g.span*CW)-(ggi>0?1:0);
-            html+=`<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:${chordSize};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${ggi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
-          });
-          html+=`</div>`;
-          if(reps>1) html+=`<div style="text-align:center;font-family:'Bebas Neue',sans-serif;font-size:.85rem;color:#c96a4a;">×${reps}</div>`;
-          html+=`</div>`;
-          if(gj<groupEnd) html+=`<span style="color:#3a332e;align-self:center;font-size:.8rem;margin:0 -2px;">·</span>`;
-        }
-        // ] ×N bracket close
-        html+=`<span style="font-family:'DM Mono',monospace;font-size:3rem;color:#4a9c6a;line-height:1;align-self:center;margin-left:-4px;">]</span>`;
-        gi2=groupEnd+1;
-      } else {
-        // Normal compas
-        const comp=normCompas(parte[gi2]);
-        const times=comp.times; const reps=comp.reps||1;
-        const resolved=times.map((ch,ti)=>resolvePercent(s,sec.parte,gi2,ti,ch));
-        const groups=compressCompas(times,resolved);
-        html+=`<div style="display:flex;flex-direction:column;gap:2px;">`;
-        html+=`<div style="display:flex;align-items:stretch;width:${CW*4}px;min-width:${CW*4}px;height:42px;background:#161311;border:2px solid #2e2825;border-radius:6px;overflow:hidden;gap:1px;">`;
-        groups.forEach((g,ggi)=>{
-          const t=transposeChord(g.ch,rT);
-          const isRep=g.orig==='%';
-          const w=Math.round(g.span*CW)-(ggi>0?1:0);
-          html+=`<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:${chordSize};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${ggi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
-        });
-        html+=`</div>`;
-        if(reps>1) html+=`<div style="text-align:center;font-family:'Bebas Neue',sans-serif;font-size:.8rem;color:#c96a4a;">×${reps}</div>`;
-        html+=`</div>`;
-        gi2++;
-      }
-    }
+    // Compases with nested group support
+    html += renderCompasesWithGroups(parte, sec.parte, s, 42, chordSize, rT);
     html+=`</div>`;
 
     // Observación
