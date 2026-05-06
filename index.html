@@ -1772,8 +1772,7 @@ function renderCompasPill(comp, letra, ci, s, CW, chordSize, transpose){
   const reps=comp.reps||1;
   const resolved=times.map((ch,ti)=>resolvePercent(s,letra,ci,ti,ch));
   const groups=compressCompas(times,resolved);
-  let h=`<div style="display:flex;flex-direction:column;gap:2px;align-items:center;">`;
-  h+=`<div style="display:flex;align-items:stretch;width:${CW*4}px;min-width:${CW*4}px;height:40px;background:#161311;border:2px solid #2e2825;border-radius:6px;overflow:hidden;gap:1px;">`;
+  let h=`<div style="display:flex;align-items:stretch;width:${CW*4}px;min-width:${CW*4}px;height:52px;background:#161311;border:2px solid #2e2825;border-radius:8px;overflow:hidden;gap:1px;">`;
   groups.forEach((g,gi)=>{
     const t=transposeChord(g.ch,transpose);
     const isRep=g.orig==='%';
@@ -1781,28 +1780,94 @@ function renderCompasPill(comp, letra, ci, s, CW, chordSize, transpose){
     h+=`<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:${chordSize};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${gi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
   });
   h+=`</div>`;
-  if(reps>1) h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.8rem;color:#c96a4a;">×${reps}</span>`;
-  h+=`</div>`;
   return h;
 }
 
-// Render compases array with nested [ ] group support
+// Render compases with nested [ ] groups as tall vertical bracket blocks
 function renderCompasesWithGroups(compases, letra, s, CW, chordSize, transpose){
-  let h='<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">';
+  // Build a tree of segments: each segment is either a lone compas or a group
+  // A group contains rows of compases and has open/close reps
+  // We process linearly tracking open groups
+
+  // First pass: identify group spans
+  // Each compas can open/close multiple groups
+  // We'll render row by row, where each "row" is compases between line breaks
+  // For now, wrap=true so compases wrap naturally, and groups get a bracket wrapper
+
+  // Simple approach: render all compases in a flex-wrap row
+  // Groups get wrapped in a relative div with bracket pseudo-elements
+
+  // Collect group spans: {id, openAt, closeAt, reps}
+  const groupSpans = {};
   compases.forEach((rawC,ci)=>{
-    const comp=normCompas(rawC);
-    // Opening brackets
-    (comp.grpOpen||[]).forEach(()=>{
-      h+=`<span style="font-family:'DM Mono',monospace;font-size:${CW>=38?'2.8rem':'2rem'};color:#4a9c6a;line-height:1;font-weight:300;">[</span>`;
+    const c=normCompas(rawC);
+    (c.grpOpen||[]).forEach(id=>{
+      groupSpans[id]={id,openAt:ci,closeAt:ci,reps:1};
     });
-    // Pill
-    h+=renderCompasPill(comp,letra,ci,s,CW,chordSize,transpose);
-    // Closing brackets with reps
-    (comp.grpClose||[]).forEach(gc=>{
-      h+=`<span style="font-family:'DM Mono',monospace;font-size:${CW>=38?'2.8rem':'2rem'};color:#4a9c6a;line-height:1;font-weight:300;">]</span>`;
-      h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:${CW>=38?'1.1rem':'.85rem'};color:#4a9c6a;align-self:center;">×${gc.reps}</span>`;
+    (c.grpClose||[]).forEach(gc=>{
+      if(groupSpans[gc.id]){groupSpans[gc.id].closeAt=ci;groupSpans[gc.id].reps=gc.reps;}
     });
   });
+  const spans=Object.values(groupSpans).sort((a,b)=>a.openAt-b.openAt);
+
+  // Render: wrap each group in a bracket box
+  // Strategy: render segments linearly
+  // We'll build HTML with group wrappers
+
+  let h='<div style="display:flex;flex-direction:column;gap:6px;">';
+
+  // Find top-level groups (not nested in another group at their openAt)
+  // and lone compases
+  let ci=0;
+  while(ci<compases.length){
+    // Check if any group opens here
+    const grp=spans.find(sp=>sp.openAt===ci);
+    if(grp){
+      // Render group block with brackets
+      const groupCompases=compases.slice(grp.openAt,grp.closeAt+1);
+      h+=`<div style="display:flex;align-items:stretch;gap:0;">`;
+      // Left bracket
+      h+=`<div style="display:flex;align-items:center;padding:0 4px;">`;
+      h+=`<div style="width:4px;height:100%;border-left:3px solid #4a9c6a;border-top:3px solid #4a9c6a;border-bottom:3px solid #4a9c6a;border-radius:4px 0 0 4px;min-height:52px;"></div>`;
+      h+=`</div>`;
+      // Inner compases in wrapped rows
+      h+=`<div style="display:flex;flex-wrap:wrap;gap:6px;flex:1;padding:4px 0;">`;
+      groupCompases.forEach((rawC2,gci)=>{
+        const comp2=normCompas(rawC2);
+        const actualCi=grp.openAt+gci;
+        // Check for nested groups
+        const nestedOpen=spans.filter(sp=>sp.openAt===actualCi&&sp.id!==grp.id);
+        const nestedClose=spans.filter(sp=>sp.closeAt===actualCi&&sp.id!==grp.id);
+        nestedOpen.forEach(()=>{
+          h+=`<span style="font-family:'DM Mono',monospace;font-size:2rem;color:#4a9c6a;line-height:1;align-self:center;">[</span>`;
+        });
+        h+=renderCompasPill(comp2,letra,actualCi,s,CW,chordSize,transpose);
+        nestedClose.forEach(ng=>{
+          h+=`<span style="font-family:'DM Mono',monospace;font-size:2rem;color:#4a9c6a;line-height:1;align-self:center;">]</span>`;
+          h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:#4a9c6a;align-self:center;">×${ng.reps}</span>`;
+        });
+        const compReps=comp2.reps||1;
+        if(compReps>1) h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.8rem;color:#c96a4a;align-self:flex-end;margin-bottom:4px;">×${compReps}</span>`;
+      });
+      h+=`</div>`;
+      // Right bracket + reps
+      h+=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 4px;gap:2px;">`;
+      h+=`<div style="width:4px;height:100%;border-right:3px solid #4a9c6a;border-top:3px solid #4a9c6a;border-bottom:3px solid #4a9c6a;border-radius:0 4px 4px 0;min-height:52px;"></div>`;
+      h+=`</div>`;
+      if(grp.reps>1) h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:#4a9c6a;align-self:center;padding-left:4px;">×${grp.reps}</span>`;
+      h+=`</div>`;
+      ci=grp.closeAt+1;
+    } else {
+      // Lone compas (not in any top-level group)
+      const comp=normCompas(compases[ci]);
+      const compReps=comp.reps||1;
+      h+=`<div style="display:flex;align-items:center;gap:4px;">`;
+      h+=renderCompasPill(comp,letra,ci,s,CW,chordSize,transpose);
+      if(compReps>1) h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:#c96a4a;align-self:center;">×${compReps}</span>`;
+      h+=`</div>`;
+      ci++;
+    }
+  }
   h+='</div>';
   return h;
 }
