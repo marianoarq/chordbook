@@ -1767,117 +1767,43 @@ function resolvePercent(s, letra, ci, ti, ch){
 
 
 // Render a compas pill for the reader
-function renderCompasPill(comp, letra, ci, s, CW, chordSize, transpose, inGrp){
+function renderCompasPill(comp, letra, ci, s, CW, chordSize, transpose){
   const times=comp.times||['','','',''];
   const reps=comp.reps||1;
   const resolved=times.map((ch,ti)=>resolvePercent(s,letra,ci,ti,ch));
   const groups=compressCompas(times,resolved);
-  let h=`<div style="flex:1;display:flex;align-items:stretch;height:52px;background:#161311;border:2px solid ${inGrp?'#4a9c6a':'#2e2825'};border-radius:8px;overflow:hidden;gap:1px;">`;
+  let h=`<div style="display:flex;flex-direction:column;gap:2px;align-items:center;">`;
+  h+=`<div style="display:flex;align-items:stretch;width:${CW*4}px;min-width:${CW*4}px;height:40px;background:#161311;border:2px solid #2e2825;border-radius:6px;overflow:hidden;gap:1px;">`;
   groups.forEach((g,gi)=>{
     const t=transposeChord(g.ch,transpose);
     const isRep=g.orig==='%';
-    h+=`<div style="flex:${g.span};display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:${chordSize};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${gi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
+    const w=Math.round(g.span*CW)-(gi>0?1:0);
+    h+=`<div style="display:flex;align-items:center;justify-content:center;width:${w}px;min-width:${w}px;font-family:'DM Mono',monospace;font-size:${chordSize};font-weight:500;color:${isRep?'#5c544c':'#e8896a'};${gi>0?'border-left:1px solid #2e2825':''}">${esc(t)}</div>`;
   });
+  h+=`</div>`;
+  if(reps>1) h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.8rem;color:#c96a4a;">×${reps}</span>`;
   h+=`</div>`;
   return h;
 }
 
-// Grid layout: 2 compases per row, brackets as vertical lines on sides
+// Render compases array with nested [ ] group support
 function renderCompasesWithGroups(compases, letra, s, CW, chordSize, transpose){
-  const COLS=2;
-
-  // Identify group spans
-  const groupSpans={};
+  let h='<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">';
   compases.forEach((rawC,ci)=>{
-    const c=normCompas(rawC);
-    (c.grpOpen||[]).forEach(id=>{ groupSpans[id]={id,openAt:ci,closeAt:ci,reps:1}; });
-    (c.grpClose||[]).forEach(gc=>{ if(groupSpans[gc.id]){groupSpans[gc.id].closeAt=ci;groupSpans[gc.id].reps=gc.reps;} });
+    const comp=normCompas(rawC);
+    // Opening brackets
+    (comp.grpOpen||[]).forEach(()=>{
+      h+=`<span style="font-family:'DM Mono',monospace;font-size:${CW>=38?'2.8rem':'2rem'};color:#4a9c6a;line-height:1;font-weight:300;">[</span>`;
+    });
+    // Pill
+    h+=renderCompasPill(comp,letra,ci,s,CW,chordSize,transpose);
+    // Closing brackets with reps
+    (comp.grpClose||[]).forEach(gc=>{
+      h+=`<span style="font-family:'DM Mono',monospace;font-size:${CW>=38?'2.8rem':'2rem'};color:#4a9c6a;line-height:1;font-weight:300;">]</span>`;
+      h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:${CW>=38?'1.1rem':'.85rem'};color:#4a9c6a;align-self:center;">×${gc.reps}</span>`;
+    });
   });
-  const spans=Object.values(groupSpans).sort((a,b)=>a.openAt-b.openAt);
-
-  // For each compas, check what depth of groups it's in
-  function depthAt(ci){
-    let d=0;
-    for(let x=0;x<=ci;x++){
-      const c=normCompas(compases[x]);
-      d+=(c.grpOpen||[]).length;
-      d-=(c.grpClose||[]).length;
-    }
-    return d;
-  }
-
-  // Build rows of COLS compases
-  const rows=[];
-  for(let i=0;i<compases.length;i+=COLS){
-    rows.push(compases.slice(i,i+COLS).map((c,j)=>({rawC:c,ci:i+j})));
-  }
-
-  // For each row, find which groups span it (use for bracket rendering)
-  function groupsSpanningRow(rowIdx){
-    const firstCi=rowIdx*COLS;
-    const lastCi=Math.min(firstCi+COLS-1,compases.length-1);
-    return spans.filter(sp=>sp.openAt<=firstCi && sp.closeAt>=lastCi);
-  }
-  function groupsOpeningAtRow(rowIdx){
-    const firstCi=rowIdx*COLS;
-    return spans.filter(sp=>Math.floor(sp.openAt/COLS)===rowIdx);
-  }
-  function groupsClosingAtRow(rowIdx){
-    const lastCi=rowIdx*COLS;
-    return spans.filter(sp=>Math.floor(sp.closeAt/COLS)===rowIdx);
-  }
-
-  // Count max bracket depth for left margin
-  const maxDepth=spans.length>0?Math.max(...rows.map((_,ri)=>groupsSpanningRow(ri).length+(groupsOpeningAtRow(ri).length))):0;
-  const bracketW=14; // px per bracket level
-
-  let h=`<div style="display:flex;flex-direction:column;gap:6px;width:100%;">`;
-
-  rows.forEach((row,ri)=>{
-    const spanning=groupsSpanningRow(ri);
-    const opening=groupsOpeningAtRow(ri);
-    const closing=groupsClosingAtRow(ri);
-    const allGroups=[...new Set([...spanning,...opening,...closing])];
-
-    h+=`<div style="display:flex;align-items:stretch;gap:0;">`;
-
-    // Left brackets
-    allGroups.forEach(grp=>{
-      const isFirst=Math.floor(grp.openAt/COLS)===ri;
-      const isLast=Math.floor(grp.closeAt/COLS)===ri;
-      const borderTop=isFirst?'2px solid #4a9c6a':'none';
-      const borderBottom=isLast?'2px solid #4a9c6a':'none';
-      h+=`<div style="width:${bracketW}px;border-left:2px solid #4a9c6a;border-top:${borderTop};border-bottom:${borderBottom};${isFirst?'border-radius:4px 0 0 0':''}${isLast?'border-radius:0 0 0 4px':''}margin-right:2px;flex-shrink:0;"></div>`;
-    });
-
-    // Compases
-    h+=`<div style="display:flex;gap:6px;flex:1;align-items:stretch;">`;
-    row.forEach(({rawC,ci})=>{
-      const comp=normCompas(rawC);
-      const inGrp=depthAt(ci)>0;
-      const compReps=comp.reps||1;
-      h+=renderCompasPill(comp,letra,ci,s,CW,chordSize,transpose,inGrp);
-      if(compReps>1) h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.8rem;color:#c96a4a;align-self:center;flex-shrink:0;">×${compReps}</span>`;
-    });
-    // Pad if last row has only 1 compas
-    if(row.length<COLS) h+=`<div style="flex:1;"></div>`;
-    h+=`</div>`;
-
-    // Right brackets
-    allGroups.forEach(grp=>{
-      const isFirst=Math.floor(grp.openAt/COLS)===ri;
-      const isLast=Math.floor(grp.closeAt/COLS)===ri;
-      const borderTop=isFirst?'2px solid #4a9c6a':'none';
-      const borderBottom=isLast?'2px solid #4a9c6a':'none';
-      h+=`<div style="width:${bracketW}px;border-right:2px solid #4a9c6a;border-top:${borderTop};border-bottom:${borderBottom};margin-left:2px;flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;padding-right:2px;">`;
-      if(isLast && grp.reps>1) h+=`<span style="font-family:'Bebas Neue',sans-serif;font-size:.85rem;color:#4a9c6a;position:absolute;margin-left:${bracketW+2}px;white-space:nowrap;">×${grp.reps}</span>`;
-      h+=`</div>`;
-    });
-
-    h+=`</div>`;
-  });
-
-  h+=`</div>`;
+  h+='</div>';
   return h;
 }
 
