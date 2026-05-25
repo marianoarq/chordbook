@@ -699,16 +699,25 @@ async function doSetUsername(){
   const banda=document.getElementById('loginBanda').value.trim();
   setLoginMsg('');
   try{
-    // Check if username taken
+    // Check if username taken by ANOTHER user
     const check=await supaFetch('GET',`profiles?username=eq.${username}&select=id`);
-    if(check && check.length>0){ setLoginMsg('Ese username ya está en uso.'); return; }
-    // Create profile
-    await supaFetch('POST','profiles',{
-      id: currentUser.id,
-      username,
-      banda: banda||null
+    if(check && check.length>0 && check[0].id!==currentUser.id){
+      setLoginMsg('Ese username ya está en uso.'); return;
+    }
+    // Upsert profile (works for both new and existing)
+    const token=localStorage.getItem('cb_token')||SUPA_KEY;
+    const res=await fetch(SUPA_URL+'/rest/v1/profiles',{
+      method:'POST',
+      headers:{
+        'apikey':SUPA_KEY,
+        'Authorization':'Bearer '+token,
+        'Content-Type':'application/json',
+        'Prefer':'resolution=merge-duplicates'
+      },
+      body:JSON.stringify({id:currentUser.id, username, banda:banda||null})
     });
-    currentProfile={id:currentUser.id, username, banda};
+    if(!res.ok){ const t=await res.text(); throw new Error(t); }
+    currentProfile={id:currentUser.id, username, banda:banda||null};
     await afterLogin();
   } catch(e){ setLoginMsg('Error: '+e.message); }
 }
