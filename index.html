@@ -270,7 +270,7 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
 </div>
 
 <!-- HOME -->
-<div id="sHome" class="scr on">
+<div id="sHome" class="scr">
   <div class="tabbar">
     <button class="tab on" onclick="gotoTab('home')"><span class="ti">𝄞</span>Canciones</button>
     <button class="tab" onclick="gotoTab('sets')"><span class="ti">☰</span>Setlists</button>
@@ -884,6 +884,10 @@ function back(){
 }
 
 function gotoTab(t){
+  if(!currentUser && t!=='home'){
+    alert('Necesitás estar logueado para acceder.');
+    return;
+  }
   navStack=[t==='home'?'sHome':t==='sets'?'sSets':'sCommunity'];
   if(t==='home'){renderSongs();show('sHome');}
   else if(t==='sets'){renderSets();show('sSets');}
@@ -2691,6 +2695,16 @@ function usarSinCuenta(){
   document.getElementById('sHome').classList.add('on');
 }
 
+async function init(){
+  // Ensure only login screen shows on startup
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
+  document.getElementById('sLogin').classList.add('on');
+  load();
+  loadPrefs();
+  const loggedIn = await checkSession();
+  if(loggedIn) await afterLogin();
+}
+
 function showSyncStatus(){
   const email=currentUser?.email||'sin sesión';
   const username=currentProfile?.username||'sin username';
@@ -2718,17 +2732,7 @@ async function forcSync(){
   }
 }
 
-async function init(){
-  load();
-  loadPrefs(); // restore font size etc before first render
-  const loggedIn = await checkSession();
-  if(loggedIn){
-    await afterLogin();
-  } else {
-    document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
-    document.getElementById('sLogin').classList.add('on');
-  }
-}
+
 
 function updateOnlineStatus(){
   const badge=document.getElementById('offlineBadge');
