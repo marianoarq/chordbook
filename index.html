@@ -486,10 +486,11 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
     <div class="ed-title" id="bandDetailTitle" style="color:#c96a4a;font-style:italic;"></div>
     <button id="bandAdminBtn" style="display:none;background:none;border:1px solid #2e2825;color:#5c544c;padding:5px 10px;border-radius:20px;font-family:'DM Mono',monospace;font-size:.58rem;cursor:pointer;" onclick="showBandAdmin()">⚙ Admin</button>
   </div>
-  <div style="display:flex;background:#161311;border-bottom:1px solid #2e2825;flex-shrink:0;">
-    <button class="tab on" id="bandTabRep" onclick="bandTab('repertorio')" style="flex:1;">Repertorio</button>
-    <button class="tab" id="bandTabSet" onclick="bandTab('setlists')" style="flex:1;">Setlists</button>
-    <button class="tab" id="bandTabMem" onclick="bandTab('miembros')" style="flex:1;">Miembros</button>
+  <div style="display:flex;background:#161311;border-bottom:1px solid #2e2825;flex-shrink:0;overflow-x:auto;">
+    <button class="tab on" id="bandTabRep" onclick="bandTab('repertorio')" style="flex:1;white-space:nowrap;">Repertorio</button>
+    <button class="tab" id="bandTabSet" onclick="bandTab('setlists')" style="flex:1;white-space:nowrap;">Setlists</button>
+    <button class="tab" id="bandTabFec" onclick="bandTab('fechas')" style="flex:1;white-space:nowrap;">📅 Fechas</button>
+    <button class="tab" id="bandTabMem" onclick="bandTab('miembros')" style="flex:1;white-space:nowrap;">Miembros</button>
   </div>
   <div class="scrollarea" id="bandDetailContent"></div>
   <div id="bandDetailFoot" style="display:none;padding:10px 12px;border-top:1px solid #2e2825;background:#161311;flex-shrink:0;">
@@ -512,6 +513,41 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
       <input id="newBandGenre" class="inp" placeholder="Ej: Britpop, Rock, Jazz...">
     </div>
     <div class="hint">Al crear la banda quedás como admin.<br>Podés invitar miembros después.</div>
+  </div>
+</div>
+
+<!-- NUEVA FECHA DE BANDA -->
+<div id="sAddDate" class="scr">
+  <div class="ed-hdr">
+    <button class="btn-back" onclick="back()">←</button>
+    <div class="ed-title" id="addDateTitle">Nueva fecha</div>
+    <button class="btn-save" onclick="saveDate()">Guardar</button>
+  </div>
+  <div class="ed-body" style="gap:12px;">
+    <div><div class="lbl">Título</div>
+      <input id="dateTitle" class="inp" placeholder="Ej: Show en Imaginario Bar">
+    </div>
+    <div><div class="lbl">Tipo</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="dateTypeOpts">
+        <label class="sitOpt" data-val="gig" style="flex:1;">🎤 Show</label>
+        <label class="sitOpt" data-val="ensayo" style="flex:1;">🎸 Ensayo</label>
+        <label class="sitOpt" data-val="grabacion" style="flex:1;">🎙️ Grabación</label>
+        <label class="sitOpt" data-val="otro" style="flex:1;">📌 Otro</label>
+      </div>
+    </div>
+    <div class="row2">
+      <div><div class="lbl">Fecha</div><input id="dateDate" class="inp" type="date"></div>
+      <div><div class="lbl">Hora</div><input id="dateTime" class="inp" type="time" value="21:00"></div>
+    </div>
+    <div><div class="lbl">Lugar / Venue</div>
+      <input id="dateVenue" class="inp" placeholder="Ej: Imaginario Bar">
+    </div>
+    <div><div class="lbl">Ciudad</div>
+      <input id="dateCity" class="inp" placeholder="Ej: Buenos Aires">
+    </div>
+    <div><div class="lbl">Notas</div>
+      <textarea id="dateNotes" class="inp" placeholder="Notas adicionales..." style="min-height:60px;resize:none;"></textarea>
+    </div>
   </div>
 </div>
 
@@ -1198,9 +1234,10 @@ async function openBand(bandId, bandName, isAdmin){
 
 function bandTab(tab){
   currentBandTab=tab;
-  ['Rep','Set','Mem'].forEach(t=>{
-    document.getElementById('bandTab'+t).classList.toggle('on',
-      (t==='Rep'&&tab==='repertorio')||(t==='Set'&&tab==='setlists')||(t==='Mem'&&tab==='miembros'));
+  const tabs={Rep:'repertorio',Set:'setlists',Fec:'fechas',Mem:'miembros'};
+  Object.entries(tabs).forEach(([key,val])=>{
+    const el=document.getElementById('bandTab'+key);
+    if(el) el.classList.toggle('on', val===tab);
   });
   loadBandTab(tab);
 }
@@ -1251,6 +1288,41 @@ async function loadBandTab(tab){
       });
     }catch(e){el.innerHTML=`<div class="empty">Error: ${e.message}</div>`;}
 
+  } else if(tab==='fechas'){
+    foot.style.display='';
+    footBtn.textContent='+ NUEVA FECHA';
+    footBtn.onclick=()=>showAddDate();
+    try{
+      const rows=await supaFetch('GET',`band_dates?band_id=eq.${currentBand.id}&select=*&order=date.asc`);
+      if(!rows||!rows.length){
+        el.innerHTML='<div class="empty">Sin fechas cargadas.<br>Agregá ensayos, shows y grabaciones.</div>';
+        return;
+      }
+      el.innerHTML='';
+      const typeEmoji={gig:'🎤',ensayo:'🎸',grabacion:'🎙️',otro:'📌'};
+      const typeLabel={gig:'Show',ensayo:'Ensayo',grabacion:'Grabación',otro:'Otro'};
+      rows.forEach(d=>{
+        const date=new Date(d.date);
+        const dateStr=date.toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+        const timeStr=date.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+        const isPast=date<new Date();
+        const div=document.createElement('div');
+        div.style.cssText=`background:#1e1a17;border:1px solid #2e2825;border-left:3px solid ${isPast?'#3a332e':'#c96a4a'};border-radius:6px;padding:11px 13px;margin-bottom:7px;`;
+        div.innerHTML=`
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="font-size:1rem;">${typeEmoji[d.type]||'📌'}</span>
+            <span style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:600;color:${isPast?'#5c544c':'#f0ebe3'};">${esc(d.title)}</span>
+            <span style="font-family:'DM Mono',monospace;font-size:.5rem;color:#5c544c;margin-left:auto;">${typeLabel[d.type]||'Otro'}</span>
+          </div>
+          <div style="font-family:'DM Mono',monospace;font-size:.65rem;color:${isPast?'#3a332e':'#c96a4a'};">📅 ${dateStr} · ${timeStr}hs</div>
+          ${d.venue?`<div style="font-family:'DM Sans',sans-serif;font-size:.78rem;color:#b8b0a4;margin-top:3px;">📍 ${esc(d.venue)}${d.city?' · '+esc(d.city):''}</div>`:''}
+          ${d.notes?`<div style="font-family:'DM Sans',sans-serif;font-size:.72rem;color:#5c544c;margin-top:4px;font-style:italic;">${esc(d.notes)}</div>`:''}
+          ${currentBandIsAdmin?`<div style="text-align:right;margin-top:6px;"><button onclick="deleteDate('${d.id}')" style="background:none;border:none;color:#3a332e;font-size:.65rem;font-family:DM Mono,monospace;cursor:pointer;">✕ eliminar</button></div>`:''}
+        `;
+        el.appendChild(div);
+      });
+    }catch(e){el.innerHTML=`<div class="empty">Error: ${e.message}</div>`;}
+
   } else if(tab==='miembros'){
     foot.style.display=currentBandIsAdmin?'':'none';
     if(currentBandIsAdmin){footBtn.textContent='+ INVITAR MÚSICO';footBtn.onclick=()=>showInviteMember();}
@@ -1289,20 +1361,32 @@ async function createBand(){
     const res=await fetch(SUPA_URL+'/rest/v1/bands',{
       method:'POST',
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'return=representation'},
-      body:JSON.stringify({name,created_by:currentUser.id})
+      body:JSON.stringify({name, genre:genre||null, created_by:currentUser.id})
     });
+    if(!res.ok){ const t=await res.text(); throw new Error(t); }
     const created=await res.json();
     const band=Array.isArray(created)?created[0]:created;
+    if(!band||!band.id) throw new Error('No se pudo crear la banda');
     // Add creator as admin member
-    await fetch(SUPA_URL+'/rest/v1/band_members',{
+    const res2=await fetch(SUPA_URL+'/rest/v1/band_members',{
       method:'POST',
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'return=representation'},
       body:JSON.stringify({band_id:band.id,user_id:currentUser.id,role:'admin'})
     });
-    alert(`✓ Banda "${name}" creada. ¡Ahora invitá a tus compañeros!`);
-    back();
-    renderBands();
-  }catch(e){alert('Error: '+e.message);}
+    if(!res2.ok){ const t=await res2.text(); throw new Error(t); }
+    // Go directly to band detail so user can invite right away
+    currentBand={id:band.id,name:band.name||name};
+    currentBandIsAdmin=true;
+    currentBandTab='miembros';
+    document.getElementById('newBandName').value='';
+    document.getElementById('newBandGenre').value='';
+    // Replace current nav stack so back goes to bands list
+    navStack=['sBands'];
+    document.getElementById('bandDetailTitle').textContent=name;
+    document.getElementById('bandAdminBtn').style.display='';
+    show('sBandDetail');
+    await loadBandTab('miembros');
+  }catch(e){alert('Error al crear banda: '+e.message);}
 }
 
 // Invite member
@@ -1430,9 +1514,61 @@ async function createBandSetlist(){
   }catch(e){alert('Error: '+e.message);}
 }
 
-function showBandAdmin(){
-  alert(`Admin de ${currentBand.name}\n\nFunciones disponibles:\n• Invitar músico → pestaña Miembros\n• Ver y quitar miembros → pestaña Miembros`);
+let currentDateType='gig';
+
+function showAddDate(){
+  document.getElementById('addDateTitle').textContent='Nueva fecha — '+currentBand.name;
+  document.getElementById('dateTitle').value='';
+  document.getElementById('dateVenue').value='';
+  document.getElementById('dateCity').value='';
+  document.getElementById('dateNotes').value='';
+  // Set today's date as default
+  const today=new Date().toISOString().split('T')[0];
+  document.getElementById('dateDate').value=today;
+  currentDateType='gig';
+  // Init type selector
+  document.querySelectorAll('#dateTypeOpts .sitOpt').forEach(el=>{
+    el.classList.toggle('on', el.dataset.val==='gig');
+    el.onclick=()=>{
+      currentDateType=el.dataset.val;
+      document.querySelectorAll('#dateTypeOpts .sitOpt').forEach(x=>x.classList.toggle('on',x===el));
+    };
+  });
+  push('sAddDate');
 }
+
+async function saveDate(){
+  const title=document.getElementById('dateTitle').value.trim();
+  const dateVal=document.getElementById('dateDate').value;
+  const timeVal=document.getElementById('dateTime').value||'21:00';
+  if(!title||!dateVal){alert('Título y fecha son obligatorios.');return;}
+  const dateISO=new Date(`${dateVal}T${timeVal}:00`).toISOString();
+  const venue=document.getElementById('dateVenue').value.trim();
+  const city=document.getElementById('dateCity').value.trim();
+  const notes=document.getElementById('dateNotes').value.trim();
+  try{
+    const token=localStorage.getItem('cb_token')||SUPA_KEY;
+    await fetch(SUPA_URL+'/rest/v1/band_dates',{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({band_id:currentBand.id,title,date:dateISO,venue:venue||null,city:city||null,notes:notes||null,type:currentDateType,created_by:currentUser.id})
+    });
+    back();
+    loadBandTab('fechas');
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function deleteDate(dateId){
+  if(!confirm('¿Eliminar esta fecha?')) return;
+  const token=localStorage.getItem('cb_token')||SUPA_KEY;
+  await fetch(SUPA_URL+'/rest/v1/band_dates?id=eq.'+dateId,{
+    method:'DELETE',
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token}
+  });
+  loadBandTab('fechas');
+}
+
+function showBandAdmin(){ bandTab('miembros'); }
 
 // ═══════════════════════════════════════════════════
 // MI PERFIL — multi-instrumento, multi-banda, situacion
