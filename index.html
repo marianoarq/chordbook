@@ -516,6 +516,20 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
   </div>
 </div>
 
+<!-- ADD SONG TO BAND -->
+<div id="sAddSongToBand" class="scr">
+  <div class="ed-hdr">
+    <button class="btn-back" onclick="back()">←</button>
+    <div class="ed-title" id="addSongBandTitle">Repertorio</div>
+  </div>
+  <div style="padding:6px 14px;border-bottom:1px solid #2e2825;flex-shrink:0;">
+    <input type="text" placeholder="Buscar canción..." 
+      style="background:#1e1a17;border:1px solid #2e2825;color:#f0ebe3;font-family:'DM Sans',sans-serif;font-size:.78rem;padding:6px 11px;border-radius:20px;outline:none;width:100%;"
+      oninput="filterAddSongList(this.value)">
+  </div>
+  <div class="scrollarea" id="addSongBandList"></div>
+</div>
+
 <!-- NUEVA FECHA DE BANDA -->
 <div id="sAddDate" class="scr">
   <div class="ed-hdr">
@@ -1327,11 +1341,18 @@ async function loadBandTab(tab){
     foot.style.display=currentBandIsAdmin?'':'none';
     if(currentBandIsAdmin){footBtn.textContent='+ INVITAR MÚSICO';footBtn.onclick=()=>showInviteMember();}
     try{
-      const rows=await supaFetch('GET',`band_members?band_id=eq.${currentBand.id}&select=*,profiles(username,situacion)`);
+      const rows=await supaFetch('GET',`band_members?band_id=eq.${currentBand.id}&select=*`);
       currentBandMembers=rows||[];
+      // Fetch profiles separately
+      const userIds=currentBandMembers.map(m=>m.user_id);
+      let profileMap={};
+      if(userIds.length){
+        const profs=await supaFetch('GET',`profiles?id=in.(${userIds.join(',')})&select=id,username,situacion,instrumento`);
+        (profs||[]).forEach(p=>profileMap[p.id]=p);
+      }
       el.innerHTML='';
-      rows.forEach(m=>{
-        const p=m.profiles||{};
+      currentBandMembers.forEach(m=>{
+        const p=profileMap[m.user_id]||{};
         const isMe=m.user_id===currentUser.id;
         const d=document.createElement('div');d.className='card';
         const initials=(p.username||'?').slice(0,2).toUpperCase();
@@ -1475,29 +1496,84 @@ async function removeMember(userId){
 }
 
 async function showAddSongToBand(){
-  // Show songs not yet in band
-  const inBand=currentBandSongs.map(s=>s.id);
-  const available=songs.filter(s=>!inBand.includes(s.id));
-  if(!available.length){alert('Todas tus canciones ya están en la banda.');return;}
-  // Simple picker
-  const names=available.map((s,i)=>`${i+1}. ${s.title}`).join('\n');
-  const input=prompt(`Elegí el número de canción para agregar a ${currentBand.name}:\n\n${names}`);
-  const idx=parseInt(input)-1;
-  if(isNaN(idx)||idx<0||idx>=available.length) return;
-  const song=available[idx];
-  // Publish song to band
+  // Show a proper picker screen
+  push('sAddSongToBand');
+  renderAddSongToBandList();
+}
+
+function renderAddSongToBandList(){
+  const el=document.getElementById('addSongBandList');
+  el.innerHTML='';
+  // Group by artist
+  const grouped={};
+  songs.forEach((s,i)=>{
+    const key=s.artist||'Sin artista';
+    if(!grouped[key]) grouped[key]=[];
+    grouped[key].push({s,i});
+  });
+  // Get songs already in band
+  const inBand=new Set(currentBandSongs.map(s=>s.id));
+  Object.entries(grouped).sort(([a],[b])=>a.localeCompare(b)).forEach(([artist,list])=>{
+    const hdr=document.createElement('div');
+    hdr.style.cssText='font-family:DM Mono,monospace;font-size:.55rem;color:#5c544c;letter-spacing:2px;text-transform:uppercase;padding:10px 14px 4px;';
+    hdr.textContent=artist; el.appendChild(hdr);
+    list.forEach(({s,i})=>{
+      const already=inBand.has(s.id);
+      const d=document.createElement('div');
+      d.style.cssText=`display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #1e1a17;background:${already?'#1e2a1e':'transparent'};`;
+      d.innerHTML=`
+        <div style="flex:1;">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:600;color:#f0ebe3;">${esc(s.title)}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:.58rem;color:#5c544c;">${s.bpm||120}bpm${s.type==='cc'?' · CC':''}</div>
+        </div>
+        <button onclick="${already?`removeSongFromBand('${s.id}',this)`:`addSongToBandNow(${i},this)`}"
+          style="background:${already?'none':'#c96a4a'};color:${already?'#c0392b':'#0e0c0b'};border:${already?'1px solid #c0392b':'none'};padding:5px 12px;border-radius:20px;font-family:'DM Mono',monospace;font-size:.6rem;cursor:pointer;letter-spacing:1px;white-space:nowrap;">
+          ${already?'✕ quitar':'+ agregar'}
+        </button>`;
+      el.appendChild(d);
+    });
+  });
+  if(!songs.length) el.innerHTML='<div class="empty">Sin canciones en tu colección.</div>';
+}
+
+async function addSongToBandNow(songIdx, btn){
+  const s=songs[songIdx];
+  btn.textContent='...'; btn.disabled=true;
   try{
-    song.public=true;
-    save();
     const token=localStorage.getItem('cb_token')||SUPA_KEY;
     await fetch(SUPA_URL+'/rest/v1/public_songs',{
       method:'POST',
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
-      body:JSON.stringify({id:song.id,owner_id:currentUser.id,username:currentProfile?.username,banda:currentBand.name,title:song.title,artist:song.artist||'',type:song.type||'grid',sig:song.sig||4,bpm:song.bpm||120,capo:song.capo||0,data:song,band_id:currentBand.id})
+      body:JSON.stringify({id:s.id,owner_id:currentUser.id,username:currentProfile?.username,title:s.title,artist:s.artist||'',type:s.type||'grid',sig:s.sig||4,bpm:s.bpm||120,capo:s.capo||0,data:s,band_id:currentBand.id,likes:0})
     });
-    alert(`✓ "${song.title}" agregada al repertorio de ${currentBand.name}`);
-    loadBandTab('repertorio');
-  }catch(e){alert('Error: '+e.message);}
+    // Reload band songs cache
+    const rows=await supaFetch('GET',`public_songs?band_id=eq.${currentBand.id}&select=*`);
+    currentBandSongs=rows||[];
+    // Update button
+    btn.textContent='✕ quitar'; btn.style.background='none'; btn.style.color='#c0392b';
+    btn.style.border='1px solid #c0392b';
+    btn.onclick=()=>removeSongFromBand(s.id,btn);
+    btn.disabled=false;
+  }catch(e){ btn.textContent='Error'; btn.disabled=false; }
+}
+
+async function removeSongFromBand(songId, btn){
+  if(!confirm('¿Quitar esta canción del repertorio de la banda?')) return;
+  btn.textContent='...'; btn.disabled=true;
+  const token=localStorage.getItem('cb_token')||SUPA_KEY;
+  await fetch(SUPA_URL+'/rest/v1/public_songs?id=eq.'+songId+'&band_id=eq.'+currentBand.id,{
+    method:'PATCH',
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+    body:JSON.stringify({band_id:null})
+  });
+  currentBandSongs=currentBandSongs.filter(s=>s.id!==songId);
+  btn.textContent='+ agregar'; btn.style.background='#c96a4a'; btn.style.color='#0e0c0b';
+  btn.style.border='none';
+  btn.onclick=function(){
+    const idx=songs.findIndex(s=>s.id===songId);
+    if(idx>=0) addSongToBandNow(idx,btn);
+  };
+  btn.disabled=false;
 }
 
 async function createBandSetlist(){
