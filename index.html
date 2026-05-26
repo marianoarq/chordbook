@@ -282,9 +282,6 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
     <button class="tab" onclick="gotoTab('community')"><span class="ti">🌐</span>Comunidad</button>
     <button class="tab" onclick="gotoTab('musicians')"><span class="ti">👥</span>Músicos</button>
     <button class="tab" onclick="gotoTab('bands')"><span class="ti">🎸</span>Bandas</button>
-    <button class="tab" onclick="gotoTab('bands')"><span class="ti">🎸</span>Bandas</button>
-    <button class="tab" onclick="gotoTab('bands')"><span class="ti">🎸</span>Bandas</button>
-    <button class="tab" onclick="gotoTab('bands')"><span class="ti">🎸</span>Bandas</button>
   </div>
   <div class="topbar" style="justify-content:space-between;">
     <div class="logo">Chord<em>Book</em></div>
@@ -315,6 +312,7 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
     <button class="tab on" onclick="gotoTab('sets')"><span class="ti">☰</span>Setlists</button>
     <button class="tab" onclick="gotoTab('community')"><span class="ti">🌐</span>Comunidad</button>
     <button class="tab" onclick="gotoTab('musicians')"><span class="ti">👥</span>Músicos</button>
+    <button class="tab" onclick="gotoTab('bands')"><span class="ti">🎸</span>Bandas</button>
   </div>
   <div class="topbar" style="justify-content:space-between;">
     <div class="logo" style="color:#f0ebe3;">Set<em style="color:#4a9c6a;">Lists</em></div>
@@ -355,6 +353,7 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
     <button class="tab" onclick="gotoTab('sets')"><span class="ti">☰</span>Setlists</button>
     <button class="tab on" onclick="gotoTab('community')"><span class="ti">🌐</span>Comunidad</button>
     <button class="tab" onclick="gotoTab('musicians')"><span class="ti">👥</span>Músicos</button>
+    <button class="tab" onclick="gotoTab('bands')"><span class="ti">🎸</span>Bandas</button>
   </div>
   <div class="topbar" style="justify-content:space-between;">
     <div class="logo" style="color:#f0ebe3;">Comu<em style="color:#4a9c6a;">nidad</em></div>
@@ -376,6 +375,7 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
     <button class="tab" onclick="gotoTab('sets')"><span class="ti">☰</span>Setlists</button>
     <button class="tab" onclick="gotoTab('community')"><span class="ti">🌐</span>Comunidad</button>
     <button class="tab on" onclick="gotoTab('musicians')"><span class="ti">👥</span>Músicos</button>
+    <button class="tab" onclick="gotoTab('bands')"><span class="ti">🎸</span>Bandas</button>
   </div>
   <div class="topbar" style="justify-content:space-between;">
     <div class="logo" style="color:#f0ebe3;">Mú<em style="color:#4a9c6a;">sicos</em></div>
@@ -1155,7 +1155,7 @@ async function renderBands(){
     // Get bands where I'm a member
     const memberships=await supaFetch('GET',`band_members?user_id=eq.${currentUser.id}&select=band_id,role,bands(id,name)`);
     // Check pending invites
-    const invites=await supaFetch('GET',`band_invites?invited_user=eq.${currentUser.id}&status=eq.pending&select=id,bands(id,name),profiles!invited_by(username)`);
+    const invites=await supaFetch('GET',`band_invites?invited_user=eq.${currentUser.id}&status=eq.pending&select=id,band_id,invited_by,bands(id,name)`);
     const banner=document.getElementById('bandInvitesBanner');
     if(invites&&invites.length>0){
       banner.style.display='';
@@ -1350,14 +1350,18 @@ async function sendInvite(userId, username){
 // Pending invites
 async function showPendingInvites(invites){
   if(!invites){
-    invites=await supaFetch('GET',`band_invites?invited_user=eq.${currentUser.id}&status=eq.pending&select=id,bands(id,name),profiles!invited_by(username)`);
+    invites=await supaFetch('GET',`band_invites?invited_user=eq.${currentUser.id}&status=eq.pending&select=id,band_id,invited_by,bands(id,name)`);
   }
   if(!invites||!invites.length){alert('Sin invitaciones pendientes.');return;}
-  // Show as a modal-style prompt for each
   for(const inv of invites){
     const bname=inv.bands?.name||'?';
-    const from=inv.profiles?.username||'?';
-    const accept=confirm(`@${from} te invitó a unirte a "${bname}".\n\nTocá OK para aceptar o Cancelar para rechazar.`);
+    // Get inviter username separately
+    let from='alguien';
+    try{
+      const p=await supaFetch('GET',`profiles?id=eq.${inv.invited_by}&select=username`);
+      if(p&&p[0]) from='@'+p[0].username;
+    }catch{}
+    const accept=confirm(`${from} te invitó a unirte a "${bname}".\n\nTocá OK para aceptar o Cancelar para rechazar.`);
     const token=localStorage.getItem('cb_token')||SUPA_KEY;
     await fetch(SUPA_URL+'/rest/v1/band_invites?id=eq.'+inv.id,{
       method:'PATCH',
