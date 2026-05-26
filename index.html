@@ -281,6 +281,10 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
     <button class="tab" onclick="gotoTab('sets')"><span class="ti">☰</span>Setlists</button>
     <button class="tab" onclick="gotoTab('community')"><span class="ti">🌐</span>Comunidad</button>
     <button class="tab" onclick="gotoTab('musicians')"><span class="ti">👥</span>Músicos</button>
+    <button class="tab" onclick="gotoTab('bands')"><span class="ti">🎸</span>Bandas</button>
+    <button class="tab" onclick="gotoTab('bands')"><span class="ti">🎸</span>Bandas</button>
+    <button class="tab" onclick="gotoTab('bands')"><span class="ti">🎸</span>Bandas</button>
+    <button class="tab" onclick="gotoTab('bands')"><span class="ti">🎸</span>Bandas</button>
   </div>
   <div class="topbar" style="justify-content:space-between;">
     <div class="logo">Chord<em>Book</em></div>
@@ -455,6 +459,76 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
   </div>
   <div class="scrollarea" id="instrPickerContent"></div>
 </div>
+
+<!-- BANDAS LIST -->
+<div id="sBands" class="scr">
+  <div class="tabbar">
+    <button class="tab" onclick="gotoTab('home')"><span class="ti">𝄞</span>Canciones</button>
+    <button class="tab" onclick="gotoTab('sets')"><span class="ti">☰</span>Setlists</button>
+    <button class="tab" onclick="gotoTab('community')"><span class="ti">🌐</span>Comunidad</button>
+    <button class="tab" onclick="gotoTab('musicians')"><span class="ti">👥</span>Músicos</button>
+    <button class="tab on" onclick="gotoTab('bands')"><span class="ti">🎸</span>Bandas</button>
+  </div>
+  <div class="topbar" style="justify-content:space-between;">
+    <div class="logo" style="color:#f0ebe3;">Mis <em style="color:#c96a4a;">Bandas</em></div>
+    <button class="btn btn-round" onclick="showCreateBand()">+</button>
+  </div>
+  <div id="bandInvitesBanner" style="display:none;background:#2e1510;border-bottom:1px solid #c96a4a;padding:8px 14px;flex-shrink:0;cursor:pointer;" onclick="showPendingInvites()">
+    <div style="font-family:'DM Mono',monospace;font-size:.62rem;color:#c96a4a;letter-spacing:1px;" id="bandInvitesMsg"></div>
+  </div>
+  <div class="scrollarea" id="bandList"><div class="empty">Cargando...</div></div>
+</div>
+
+<!-- BAND DETAIL -->
+<div id="sBandDetail" class="scr">
+  <div class="ed-hdr">
+    <button class="btn-back" onclick="back()">←</button>
+    <div class="ed-title" id="bandDetailTitle" style="color:#c96a4a;font-style:italic;"></div>
+    <button id="bandAdminBtn" style="display:none;background:none;border:1px solid #2e2825;color:#5c544c;padding:5px 10px;border-radius:20px;font-family:'DM Mono',monospace;font-size:.58rem;cursor:pointer;" onclick="showBandAdmin()">⚙ Admin</button>
+  </div>
+  <div style="display:flex;background:#161311;border-bottom:1px solid #2e2825;flex-shrink:0;">
+    <button class="tab on" id="bandTabRep" onclick="bandTab('repertorio')" style="flex:1;">Repertorio</button>
+    <button class="tab" id="bandTabSet" onclick="bandTab('setlists')" style="flex:1;">Setlists</button>
+    <button class="tab" id="bandTabMem" onclick="bandTab('miembros')" style="flex:1;">Miembros</button>
+  </div>
+  <div class="scrollarea" id="bandDetailContent"></div>
+  <div id="bandDetailFoot" style="display:none;padding:10px 12px;border-top:1px solid #2e2825;background:#161311;flex-shrink:0;">
+    <button id="bandDetailFootBtn" style="width:100%;background:#c96a4a;color:#0e0c0b;border:none;padding:10px;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;cursor:pointer;"></button>
+  </div>
+</div>
+
+<!-- CREATE BAND -->
+<div id="sCreateBand" class="scr">
+  <div class="ed-hdr">
+    <button class="btn-back" onclick="back()">←</button>
+    <div class="ed-title">Nueva Banda</div>
+    <button class="btn-save" onclick="createBand()">Crear</button>
+  </div>
+  <div class="ed-body" style="gap:12px;">
+    <div><div class="lbl">Nombre de la banda</div>
+      <input id="newBandName" class="inp" placeholder="Ej: Up in the Sky">
+    </div>
+    <div><div class="lbl">Género (opcional)</div>
+      <input id="newBandGenre" class="inp" placeholder="Ej: Britpop, Rock, Jazz...">
+    </div>
+    <div class="hint">Al crear la banda quedás como admin.<br>Podés invitar miembros después.</div>
+  </div>
+</div>
+
+<!-- INVITE MEMBER -->
+<div id="sInviteMember" class="scr">
+  <div class="ed-hdr">
+    <button class="btn-back" onclick="back()">←</button>
+    <div class="ed-title" id="inviteTitle">Invitar músico</div>
+  </div>
+  <div class="ed-body" style="gap:12px;">
+    <div><div class="lbl">Buscar por username</div>
+      <input id="inviteSearch" class="inp" placeholder="@username" oninput="searchMusiciansToInvite()">
+    </div>
+    <div id="inviteResults"></div>
+  </div>
+</div>
+
 <div id="sMeta" class="scr">
   <div class="ed-hdr">
     <button class="btn-back" onclick="back()">←</button>
@@ -845,6 +919,8 @@ async function afterLogin(){
   }
   await cloudLoad();
   renderSongs();renderSets();buildCP();
+  // Check pending band invites in background
+  if(navigator.onLine) setTimeout(checkPendingInvites, 2000);
   // Show username in topbar
   const disp=document.getElementById('userDisp');
   if(disp) disp.textContent='@'+(currentProfile.username||currentUser.email.split('@')[0]);
@@ -1002,11 +1078,13 @@ function gotoTab(t){
   if(!currentUser && t!=='home'){
     alert('Necesitás estar logueado para acceder.');return;
   }
-  navStack=[t==='home'?'sHome':t==='sets'?'sSets':t==='community'?'sCommunity':'sMusicians'];
+  const screenMap={home:'sHome',sets:'sSets',community:'sCommunity',musicians:'sMusicians',bands:'sBands'};
+  navStack=[screenMap[t]||'sHome'];
   if(t==='home'){renderSongs();show('sHome');}
   else if(t==='sets'){renderSets();show('sSets');}
   else if(t==='community'){renderCommunity();show('sCommunity');}
-  else{renderMusicians();show('sMusicians');}
+  else if(t==='musicians'){renderMusicians();show('sMusicians');}
+  else if(t==='bands'){renderBands();show('sBands');}
 }
 
 // ═══════════════════════════════════════════════════
@@ -1059,6 +1137,297 @@ function filterMusicians(){
       ${isMe?`<button onclick="showProfile()" style="background:none;border:1px solid #2e2825;color:#5c544c;width:30px;height:30px;border-radius:4px;font-size:.75rem;cursor:pointer;flex-shrink:0;">✎</button>`:''}`;
     el.appendChild(d);
   });
+}
+
+// ═══════════════════════════════════════════════════
+// BANDAS — Sistema completo
+// ═══════════════════════════════════════════════════
+let currentBand=null; // banda actualmente abierta
+let currentBandTab='repertorio';
+let currentBandIsAdmin=false;
+let currentBandSongs=[]; // canciones de la banda
+let currentBandMembers=[];
+
+async function renderBands(){
+  const el=document.getElementById('bandList');
+  el.innerHTML='<div class="empty">Cargando...</div>';
+  try{
+    // Get bands where I'm a member
+    const memberships=await supaFetch('GET',`band_members?user_id=eq.${currentUser.id}&select=band_id,role,bands(id,name)`);
+    // Check pending invites
+    const invites=await supaFetch('GET',`band_invites?invited_user=eq.${currentUser.id}&status=eq.pending&select=id,bands(id,name),profiles!invited_by(username)`);
+    const banner=document.getElementById('bandInvitesBanner');
+    if(invites&&invites.length>0){
+      banner.style.display='';
+      document.getElementById('bandInvitesMsg').textContent=`🔔 Tenés ${invites.length} invitación${invites.length>1?'es':''} pendiente${invites.length>1?'s':''}. Tocá para ver.`;
+      banner.onclick=()=>showPendingInvites(invites);
+    } else { banner.style.display='none'; }
+
+    if(!memberships||!memberships.length){
+      el.innerHTML='<div class="empty">No estás en ninguna banda aún.<br>Creá una o esperá una invitación.</div>';
+      return;
+    }
+    el.innerHTML='';
+    memberships.forEach(m=>{
+      const b=m.bands; if(!b) return;
+      const isAdmin=m.role==='admin';
+      const d=document.createElement('div');d.className='card';
+      d.innerHTML=`
+        <div style="width:44px;height:44px;border-radius:8px;background:#2e1510;border:2px solid #c96a4a;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:1rem;color:#c96a4a;flex-shrink:0;">🎸</div>
+        <div class="card-info" onclick="openBand('${b.id}','${esc(b.name)}',${isAdmin})">
+          <div class="card-title">${esc(b.name)}</div>
+          <div class="card-sub">${isAdmin?'Admin':'Miembro'}</div>
+        </div>
+        <div class="card-acts">
+          <button class="icobtn" onclick="event.stopPropagation();openBand('${b.id}','${esc(b.name)}',${isAdmin})">→</button>
+        </div>`;
+      el.appendChild(d);
+    });
+  }catch(e){ el.innerHTML=`<div class="empty">Error: ${e.message}</div>`; }
+}
+
+async function openBand(bandId, bandName, isAdmin){
+  currentBand={id:bandId,name:bandName};
+  currentBandIsAdmin=isAdmin;
+  currentBandTab='repertorio';
+  document.getElementById('bandDetailTitle').textContent=bandName;
+  document.getElementById('bandAdminBtn').style.display=isAdmin?'':'none';
+  push('sBandDetail');
+  await loadBandTab('repertorio');
+}
+
+function bandTab(tab){
+  currentBandTab=tab;
+  ['Rep','Set','Mem'].forEach(t=>{
+    document.getElementById('bandTab'+t).classList.toggle('on',
+      (t==='Rep'&&tab==='repertorio')||(t==='Set'&&tab==='setlists')||(t==='Mem'&&tab==='miembros'));
+  });
+  loadBandTab(tab);
+}
+
+async function loadBandTab(tab){
+  const el=document.getElementById('bandDetailContent');
+  const foot=document.getElementById('bandDetailFoot');
+  const footBtn=document.getElementById('bandDetailFootBtn');
+  el.innerHTML='<div class="empty">Cargando...</div>';
+
+  if(tab==='repertorio'){
+    foot.style.display='';
+    footBtn.textContent='+ AGREGAR CANCIÓN';
+    footBtn.onclick=()=>showAddSongToBand();
+    try{
+      const rows=await supaFetch('GET',`public_songs?band_id=eq.${currentBand.id}&select=*&order=title.asc`);
+      currentBandSongs=rows||[];
+      if(!currentBandSongs.length){
+        el.innerHTML='<div class="empty">Sin canciones aún.<br>Agregá canciones de tu repertorio.</div>';
+        return;
+      }
+      el.innerHTML='';
+      currentBandSongs.forEach(s=>{
+        const d=document.createElement('div');d.className='card';
+        d.innerHTML=`<div class="card-info" onclick="openReader(songs.findIndex(x=>x.id==='${s.id}'))">
+          <div class="card-title">${esc(s.title)}</div>
+          <div class="card-sub">${esc(s.artist||'—')} · ${s.bpm||120}bpm</div>
+        </div>`;
+        el.appendChild(d);
+      });
+    }catch(e){el.innerHTML=`<div class="empty">Error: ${e.message}</div>`;}
+
+  } else if(tab==='setlists'){
+    foot.style.display='';
+    footBtn.textContent='+ NUEVO SETLIST';
+    footBtn.onclick=()=>createBandSetlist();
+    try{
+      const rows=await supaFetch('GET',`band_setlists?band_id=eq.${currentBand.id}&select=*&order=updated_at.desc`);
+      if(!rows||!rows.length){el.innerHTML='<div class="empty">Sin setlists. Creá el primero.</div>';return;}
+      el.innerHTML='';
+      rows.forEach(sl=>{
+        const d=document.createElement('div');d.className='card sl';
+        d.innerHTML=`<div class="card-info">
+          <div class="card-title">${esc(sl.name)}</div>
+          <div class="card-sub">${(sl.song_ids||[]).length} canciones</div>
+        </div>`;
+        el.appendChild(d);
+      });
+    }catch(e){el.innerHTML=`<div class="empty">Error: ${e.message}</div>`;}
+
+  } else if(tab==='miembros'){
+    foot.style.display=currentBandIsAdmin?'':'none';
+    if(currentBandIsAdmin){footBtn.textContent='+ INVITAR MÚSICO';footBtn.onclick=()=>showInviteMember();}
+    try{
+      const rows=await supaFetch('GET',`band_members?band_id=eq.${currentBand.id}&select=*,profiles(username,situacion)`);
+      currentBandMembers=rows||[];
+      el.innerHTML='';
+      rows.forEach(m=>{
+        const p=m.profiles||{};
+        const isMe=m.user_id===currentUser.id;
+        const d=document.createElement('div');d.className='card';
+        const initials=(p.username||'?').slice(0,2).toUpperCase();
+        d.innerHTML=`
+          <div style="width:40px;height:40px;border-radius:50%;background:#2e2825;border:2px solid #c96a4a;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:#c96a4a;flex-shrink:0;">${initials}</div>
+          <div class="card-info">
+            <div class="card-title">@${esc(p.username||'?')} ${isMe?'<span style="color:#5c544c;font-size:.7rem;">(vos)</span>':''}</div>
+            <div class="card-sub">${m.role==='admin'?'👑 Admin':'Miembro'}</div>
+          </div>
+          ${currentBandIsAdmin&&!isMe?`<button onclick="removeMember('${m.user_id}')" class="icobtn" style="font-size:.65rem;color:#c0392b;">✕</button>`:''}`;
+        el.appendChild(d);
+      });
+    }catch(e){el.innerHTML=`<div class="empty">Error: ${e.message}</div>`;}
+  }
+}
+
+// Create band
+function showCreateBand(){ push('sCreateBand'); }
+
+async function createBand(){
+  const name=document.getElementById('newBandName').value.trim();
+  if(!name){alert('Ponele un nombre a la banda.');return;}
+  const genre=document.getElementById('newBandGenre').value.trim();
+  try{
+    const token=localStorage.getItem('cb_token')||SUPA_KEY;
+    // Create band
+    const res=await fetch(SUPA_URL+'/rest/v1/bands',{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify({name,created_by:currentUser.id})
+    });
+    const created=await res.json();
+    const band=Array.isArray(created)?created[0]:created;
+    // Add creator as admin member
+    await fetch(SUPA_URL+'/rest/v1/band_members',{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({band_id:band.id,user_id:currentUser.id,role:'admin'})
+    });
+    alert(`✓ Banda "${name}" creada. ¡Ahora invitá a tus compañeros!`);
+    back();
+    renderBands();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+// Invite member
+let invitingToBandId=null;
+function showInviteMember(){
+  invitingToBandId=currentBand.id;
+  document.getElementById('inviteTitle').textContent='Invitar a '+currentBand.name;
+  document.getElementById('inviteSearch').value='';
+  document.getElementById('inviteResults').innerHTML='';
+  push('sInviteMember');
+}
+
+async function searchMusiciansToInvite(){
+  const q=document.getElementById('inviteSearch').value.trim().replace('@','');
+  const el=document.getElementById('inviteResults');
+  if(!q){el.innerHTML='';return;}
+  try{
+    const rows=await supaFetch('GET',`profiles?username=ilike.*${q}*&select=id,username&limit=10`);
+    if(!rows||!rows.length){el.innerHTML='<div style="color:#5c544c;font-family:DM Mono,monospace;font-size:.7rem;padding:8px;">Sin resultados.</div>';return;}
+    el.innerHTML='';
+    rows.forEach(p=>{
+      if(p.id===currentUser.id) return; // skip self
+      const d=document.createElement('div');
+      d.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:10px 4px;border-bottom:1px solid #1e1a17;';
+      d.innerHTML=`<span style="font-family:'DM Sans',sans-serif;font-size:.9rem;color:#f0ebe3;">@${esc(p.username)}</span>
+        <button onclick="sendInvite('${p.id}','${esc(p.username)}')" style="background:#c96a4a;color:#0e0c0b;border:none;padding:5px 12px;border-radius:20px;font-family:'DM Mono',monospace;font-size:.6rem;cursor:pointer;letter-spacing:1px;">INVITAR</button>`;
+      el.appendChild(d);
+    });
+  }catch(e){el.innerHTML=`<div style="color:#c0392b;font-size:.7rem;padding:8px;">${e.message}</div>`;}
+}
+
+async function sendInvite(userId, username){
+  try{
+    const token=localStorage.getItem('cb_token')||SUPA_KEY;
+    await fetch(SUPA_URL+'/rest/v1/band_invites',{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({band_id:invitingToBandId,invited_by:currentUser.id,invited_user:userId,status:'pending'})
+    });
+    alert(`✓ Invitación enviada a @${username}`);
+    back();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+// Pending invites
+async function showPendingInvites(invites){
+  if(!invites){
+    invites=await supaFetch('GET',`band_invites?invited_user=eq.${currentUser.id}&status=eq.pending&select=id,bands(id,name),profiles!invited_by(username)`);
+  }
+  if(!invites||!invites.length){alert('Sin invitaciones pendientes.');return;}
+  // Show as a modal-style prompt for each
+  for(const inv of invites){
+    const bname=inv.bands?.name||'?';
+    const from=inv.profiles?.username||'?';
+    const accept=confirm(`@${from} te invitó a unirte a "${bname}".\n\nTocá OK para aceptar o Cancelar para rechazar.`);
+    const token=localStorage.getItem('cb_token')||SUPA_KEY;
+    await fetch(SUPA_URL+'/rest/v1/band_invites?id=eq.'+inv.id,{
+      method:'PATCH',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({status:accept?'accepted':'rejected'})
+    });
+    if(accept){
+      await fetch(SUPA_URL+'/rest/v1/band_members',{
+        method:'POST',
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify({band_id:inv.bands.id,user_id:currentUser.id,role:'member'})
+      });
+      alert(`✓ Te uniste a "${bname}"`);
+    }
+  }
+  renderBands();
+}
+
+async function removeMember(userId){
+  if(!confirm('¿Quitar a este miembro de la banda?')) return;
+  const token=localStorage.getItem('cb_token')||SUPA_KEY;
+  await fetch(SUPA_URL+'/rest/v1/band_members?band_id=eq.'+currentBand.id+'&user_id=eq.'+userId,{
+    method:'DELETE',
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token}
+  });
+  loadBandTab('miembros');
+}
+
+async function showAddSongToBand(){
+  // Show songs not yet in band
+  const inBand=currentBandSongs.map(s=>s.id);
+  const available=songs.filter(s=>!inBand.includes(s.id));
+  if(!available.length){alert('Todas tus canciones ya están en la banda.');return;}
+  // Simple picker
+  const names=available.map((s,i)=>`${i+1}. ${s.title}`).join('\n');
+  const input=prompt(`Elegí el número de canción para agregar a ${currentBand.name}:\n\n${names}`);
+  const idx=parseInt(input)-1;
+  if(isNaN(idx)||idx<0||idx>=available.length) return;
+  const song=available[idx];
+  // Publish song to band
+  try{
+    song.public=true;
+    save();
+    const token=localStorage.getItem('cb_token')||SUPA_KEY;
+    await fetch(SUPA_URL+'/rest/v1/public_songs',{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+      body:JSON.stringify({id:song.id,owner_id:currentUser.id,username:currentProfile?.username,banda:currentBand.name,title:song.title,artist:song.artist||'',type:song.type||'grid',sig:song.sig||4,bpm:song.bpm||120,capo:song.capo||0,data:song,band_id:currentBand.id})
+    });
+    alert(`✓ "${song.title}" agregada al repertorio de ${currentBand.name}`);
+    loadBandTab('repertorio');
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function createBandSetlist(){
+  const name=prompt(`Nombre del setlist para ${currentBand.name}:`);
+  if(!name) return;
+  try{
+    const token=localStorage.getItem('cb_token')||SUPA_KEY;
+    await fetch(SUPA_URL+'/rest/v1/band_setlists',{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({band_id:currentBand.id,name,song_ids:[],created_by:currentUser.id,updated_at:new Date().toISOString()})
+    });
+    loadBandTab('setlists');
+  }catch(e){alert('Error: '+e.message);}
+}
+
+function showBandAdmin(){
+  alert(`Admin de ${currentBand.name}\n\nFunciones disponibles:\n• Invitar músico → pestaña Miembros\n• Ver y quitar miembros → pestaña Miembros`);
 }
 
 // ═══════════════════════════════════════════════════
@@ -3123,6 +3492,21 @@ async function init(){
   loadPrefs();
   const loggedIn = await checkSession();
   if(loggedIn) await afterLogin();
+}
+
+async function checkPendingInvites(){
+  if(!currentUser) return;
+  try{
+    const invites=await supaFetch('GET',`band_invites?invited_user=eq.${currentUser.id}&status=eq.pending&select=id`);
+    if(invites&&invites.length>0){
+      // Show notification in bands tab
+      const banner=document.getElementById('bandInvitesBanner');
+      if(banner){
+        banner.style.display='';
+        document.getElementById('bandInvitesMsg').textContent=`🔔 Tenés ${invites.length} invitación${invites.length>1?'es':''} a banda${invites.length>1?'s':''}`;
+      }
+    }
+  }catch{}
 }
 
 function showSyncStatus(){
