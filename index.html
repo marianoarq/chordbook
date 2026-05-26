@@ -182,6 +182,11 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
 .tapbtn{background:none;border:1px solid #2e2825;color:#5c544c;padding:3px 10px;border-radius:20px;font-family:'DM Mono',monospace;font-size:.55rem;cursor:pointer;}
 .playbtn{background:#c96a4a;color:#0e0c0b;border:none;width:36px;height:36px;border-radius:50%;font-size:.95rem;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .playbtn.active{background:#4a9c6a;}
+.sitOpt{display:flex;align-items:center;padding:9px 12px;background:#1e1a17;border:1px solid #2e2825;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:.85rem;color:#5c544c;cursor:pointer;transition:all .15s;}
+.sitOpt.on{border-color:#c96a4a;color:#f0ebe3;background:#2e1510;}
+.starRating{display:flex;gap:3px;}
+.starRating span{font-size:1rem;cursor:pointer;color:#2e2825;transition:color .1s;}
+.starRating span.on{color:#e8896a;}
 .pinbox{width:42px;height:56px;background:#1e1a17;border:2px solid #2e2825;border-radius:8px;color:#f0ebe3;font-family:'Bebas Neue',sans-serif;font-size:1.8rem;text-align:center;outline:none;-webkit-appearance:none;}
 .pinbox:focus{border-color:#c96a4a;}
 .spdBtn{background:none;border:1px solid #2e2825;color:#5c544c;padding:3px 7px;border-radius:20px;font-family:'DM Mono',monospace;font-size:.58rem;cursor:pointer;white-space:nowrap;}
@@ -275,6 +280,7 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
     <button class="tab on" onclick="gotoTab('home')"><span class="ti">𝄞</span>Canciones</button>
     <button class="tab" onclick="gotoTab('sets')"><span class="ti">☰</span>Setlists</button>
     <button class="tab" onclick="gotoTab('community')"><span class="ti">🌐</span>Comunidad</button>
+    <button class="tab" onclick="gotoTab('musicians')"><span class="ti">👥</span>Músicos</button>
   </div>
   <div class="topbar" style="justify-content:space-between;">
     <div class="logo">Chord<em>Book</em></div>
@@ -286,6 +292,15 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
       <button class="btn btn-ghost" onclick="showMeta()" style="font-size:.52rem;letter-spacing:.5px;border-color:#c96a4a;color:#c96a4a;">Structure</button>
     </div>
   </div>
+  <div style="padding:6px 14px;border-bottom:1px solid #2e2825;display:flex;gap:6px;flex-shrink:0;">
+    <input id="songSearch" type="text" placeholder="Buscar título o artista..."
+      style="background:#1e1a17;border:1px solid #2e2825;color:#f0ebe3;font-family:'DM Sans',sans-serif;font-size:.78rem;padding:6px 11px;border-radius:20px;outline:none;flex:1;"
+      oninput="renderSongs()">
+    <select id="songArtistFilter" onchange="renderSongs()"
+      style="background:#1e1a17;border:1px solid #2e2825;color:#5c544c;font-family:'DM Mono',monospace;font-size:.6rem;padding:5px 8px;border-radius:20px;outline:none;max-width:110px;">
+      <option value="">Todos</option>
+    </select>
+  </div>
   <div class="scrollarea" id="songList"></div>
 </div>
 
@@ -295,6 +310,7 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
     <button class="tab" onclick="gotoTab('home')"><span class="ti">𝄞</span>Canciones</button>
     <button class="tab on" onclick="gotoTab('sets')"><span class="ti">☰</span>Setlists</button>
     <button class="tab" onclick="gotoTab('community')"><span class="ti">🌐</span>Comunidad</button>
+    <button class="tab" onclick="gotoTab('musicians')"><span class="ti">👥</span>Músicos</button>
   </div>
   <div class="topbar" style="justify-content:space-between;">
     <div class="logo" style="color:#f0ebe3;">Set<em style="color:#4a9c6a;">Lists</em></div>
@@ -334,6 +350,7 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
     <button class="tab" onclick="gotoTab('home')"><span class="ti">𝄞</span>Canciones</button>
     <button class="tab" onclick="gotoTab('sets')"><span class="ti">☰</span>Setlists</button>
     <button class="tab on" onclick="gotoTab('community')"><span class="ti">🌐</span>Comunidad</button>
+    <button class="tab" onclick="gotoTab('musicians')"><span class="ti">👥</span>Músicos</button>
   </div>
   <div class="topbar" style="justify-content:space-between;">
     <div class="logo" style="color:#f0ebe3;">Comu<em style="color:#4a9c6a;">nidad</em></div>
@@ -348,7 +365,96 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
   </div>
 </div>
 
-<!-- META ED -->
+<!-- MÚSICOS -->
+<div id="sMusicians" class="scr">
+  <div class="tabbar">
+    <button class="tab" onclick="gotoTab('home')"><span class="ti">𝄞</span>Canciones</button>
+    <button class="tab" onclick="gotoTab('sets')"><span class="ti">☰</span>Setlists</button>
+    <button class="tab" onclick="gotoTab('community')"><span class="ti">🌐</span>Comunidad</button>
+    <button class="tab on" onclick="gotoTab('musicians')"><span class="ti">👥</span>Músicos</button>
+  </div>
+  <div class="topbar" style="justify-content:space-between;">
+    <div class="logo" style="color:#f0ebe3;">Mú<em style="color:#4a9c6a;">sicos</em></div>
+    <button class="btn btn-ghost terra" onclick="showProfile()">Mi perfil</button>
+  </div>
+  <div style="padding:8px 14px;border-bottom:1px solid #2e2825;display:flex;gap:8px;flex-shrink:0;">
+    <input id="musicianSearch" type="text" placeholder="Buscar por nombre, banda, instrumento..."
+      style="background:#1e1a17;border:1px solid #2e2825;color:#f0ebe3;font-family:'DM Sans',sans-serif;font-size:.8rem;padding:7px 12px;border-radius:20px;outline:none;flex:1;"
+      oninput="filterMusicians()">
+    <label style="display:flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:.55rem;color:#5c544c;cursor:pointer;white-space:nowrap;">
+      <input type="checkbox" id="filterBuscaBanda" onchange="filterMusicians()"> Busca banda
+    </label>
+  </div>
+  <div class="scrollarea" id="musicianList"><div class="empty">Cargando...</div></div>
+</div>
+
+<!-- MI PERFIL -->
+<div id="sProfile" class="scr">
+  <div class="ed-hdr">
+    <button class="btn-back" onclick="back()">←</button>
+    <div class="ed-title" style="color:#4a9c6a;">Mi Perfil</div>
+    <button class="btn-save" style="background:#4a9c6a;" onclick="saveProfile()">Guardar</button>
+  </div>
+  <div class="ed-body" style="gap:14px;">
+    <!-- Avatar + username -->
+    <div style="text-align:center;padding:4px 0;">
+      <div id="profileAvatar" style="width:64px;height:64px;border-radius:50%;background:#2e2825;border:2px solid #4a9c6a;display:inline-flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:#4a9c6a;">?</div>
+      <div id="profileUsername" style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;color:#c96a4a;letter-spacing:2px;margin-top:6px;">@</div>
+    </div>
+
+    <!-- Username -->
+    <div><div class="lbl">Username</div>
+      <input id="profUsername" class="inp" placeholder="tu username" oninput="updateProfilePreview()">
+    </div>
+
+    <!-- Bio -->
+    <div><div class="lbl">Bio</div>
+      <textarea id="profBio" class="inp" placeholder="Contá algo sobre vos..." style="min-height:60px;resize:none;"></textarea>
+    </div>
+
+    <!-- Situación -->
+    <div><div class="lbl">Situación</div>
+      <div style="display:flex;flex-direction:column;gap:6px;" id="situacionOpts">
+        <label class="sitOpt" data-val="disponible">🎯 Disponible / Buscando banda</label>
+        <label class="sitOpt" data-val="en_banda">🎸 Tocando en banda(s)</label>
+        <label class="sitOpt" data-val="solista">🎤 Solista</label>
+        <label class="sitOpt" data-val="sesionista">💼 Sesionista</label>
+        <label class="sitOpt" data-val="sin_interes">🔇 Sin interés en tocar por ahora</label>
+      </div>
+    </div>
+
+    <!-- Instrumentos -->
+    <div>
+      <div class="lbl">Instrumentos</div>
+      <div id="profInstrList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
+      <button onclick="showInstrumentPicker()" style="width:100%;background:none;border:1px dashed #2e2825;color:#5c544c;padding:8px;border-radius:6px;font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:1px;cursor:pointer;">+ Agregar instrumento</button>
+    </div>
+
+    <!-- Bandas -->
+    <div>
+      <div class="lbl">Mis Bandas</div>
+      <div id="profBandList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
+      <div style="display:flex;gap:6px;">
+        <input id="profBandInput" class="inp" placeholder="Nombre de la banda..." style="flex:1;" oninput="searchBands()" onkeydown="if(event.key==='Enter')addBand()">
+        <button onclick="addBand()" style="background:#c96a4a;color:#0e0c0b;border:none;padding:6px 14px;border-radius:6px;font-family:'DM Mono',monospace;font-size:.65rem;cursor:pointer;">+</button>
+      </div>
+      <div id="bandSuggestions" style="display:none;background:#1e1a17;border:1px solid #2e2825;border-radius:6px;margin-top:4px;max-height:120px;overflow-y:auto;"></div>
+    </div>
+
+    <div style="font-family:'DM Mono',monospace;font-size:.58rem;color:#5c544c;">
+      Email: <span id="profEmail" style="color:#b8b0a4;"></span>
+    </div>
+  </div>
+</div>
+
+<!-- INSTRUMENT PICKER -->
+<div id="sInstrPicker" class="scr" style="background:#0e0c0b;">
+  <div class="ed-hdr">
+    <button class="btn-back" onclick="back()">←</button>
+    <div class="ed-title">Elegir instrumento</div>
+  </div>
+  <div class="scrollarea" id="instrPickerContent"></div>
+</div>
 <div id="sMeta" class="scr">
   <div class="ed-hdr">
     <button class="btn-back" onclick="back()">←</button>
@@ -894,13 +1000,284 @@ function back(){
 
 function gotoTab(t){
   if(!currentUser && t!=='home'){
-    alert('Necesitás estar logueado para acceder.');
-    return;
+    alert('Necesitás estar logueado para acceder.');return;
   }
-  navStack=[t==='home'?'sHome':t==='sets'?'sSets':'sCommunity'];
+  navStack=[t==='home'?'sHome':t==='sets'?'sSets':t==='community'?'sCommunity':'sMusicians'];
   if(t==='home'){renderSongs();show('sHome');}
   else if(t==='sets'){renderSets();show('sSets');}
-  else{renderCommunity();show('sCommunity');}
+  else if(t==='community'){renderCommunity();show('sCommunity');}
+  else{renderMusicians();show('sMusicians');}
+}
+
+// ═══════════════════════════════════════════════════
+// MÚSICOS — Directorio
+// ═══════════════════════════════════════════════════
+let musiciansCache=[];
+
+async function renderMusicians(){
+  const el=document.getElementById('musicianList');
+  el.innerHTML='<div class="empty">Cargando...</div>';
+  try{
+    const rows=await supaFetch('GET','profiles?select=*&order=created_at.asc');
+    musiciansCache=rows||[];
+    filterMusicians();
+  }catch(e){
+    el.innerHTML='<div class="empty">Error al cargar músicos.</div>';
+  }
+}
+
+function filterMusicians(){
+  const q=(document.getElementById('musicianSearch')?.value||'').toLowerCase();
+  const buscaBanda=document.getElementById('filterBuscaBanda')?.checked;
+  let filtered=[...musiciansCache]; // include everyone including self
+  if(q) filtered=filtered.filter(m=>
+    (m.username||'').toLowerCase().includes(q)||
+    (m.banda||'').toLowerCase().includes(q)||
+    (m.instrumento||'').toLowerCase().includes(q)||
+    (m.bio||'').toLowerCase().includes(q)
+  );
+  if(buscaBanda) filtered=filtered.filter(m=>m.situacion==='disponible');
+  const el=document.getElementById('musicianList');
+  if(!filtered.length){el.innerHTML='<div class="empty">Sin músicos encontrados.</div>';return;}
+  el.innerHTML='';
+  const sitLabels={disponible:'🎯 Buscando banda',en_banda:'🎸 En banda',solista:'🎤 Solista',sesionista:'💼 Sesionista',sin_interes:'🔇 Sin interés'};
+  filtered.forEach(m=>{
+    const isMe=currentUser&&m.id===currentUser.id;
+    const d=document.createElement('div');d.className='card';
+    const initials=(m.username||'?').slice(0,2).toUpperCase();
+    const sitLabel=sitLabels[m.situacion]||'';
+    d.innerHTML=`
+      <div style="width:44px;height:44px;border-radius:50%;background:#2e2825;border:2px solid ${m.situacion==='disponible'?'#4a9c6a':'#2e2825'};display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:1rem;color:#c96a4a;flex-shrink:0;">${initials}</div>
+      <div class="card-info" style="cursor:default;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <div class="card-title">@${esc(m.username||'?')}</div>
+          ${isMe?'<span style="font-family:DM Mono,monospace;font-size:.5rem;background:#2e1510;color:#c96a4a;border:1px solid #c96a4a;padding:1px 5px;border-radius:3px;">vos</span>':''}
+          ${sitLabel?`<span style="font-family:DM Mono,monospace;font-size:.5rem;color:#5c544c;">${sitLabel}</span>`:''}
+        </div>
+        ${m.bio?`<div style="font-family:'DM Sans',sans-serif;font-size:.72rem;color:#b8b0a4;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(m.bio)}</div>`:''}
+      </div>
+      ${isMe?`<button onclick="showProfile()" style="background:none;border:1px solid #2e2825;color:#5c544c;width:30px;height:30px;border-radius:4px;font-size:.75rem;cursor:pointer;flex-shrink:0;">✎</button>`:''}`;
+    el.appendChild(d);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// MI PERFIL — multi-instrumento, multi-banda, situacion
+// ═══════════════════════════════════════════════════
+let profInstruments=[]; // [{instrumento, nivel}]
+let profBands=[];       // [{id, name}]
+let profSituacion='disponible';
+
+const INSTRUMENTS={
+  'Cuerdas':['Guitarra eléctrica','Guitarra acústica','Guitarra clásica','Bajo eléctrico','Bajo acústico','Violín','Viola','Cello','Contrabajo','Ukulele','Mandolina','Arpa','Banjo'],
+  'Teclas':['Piano','Teclado','Órgano','Sintetizador','Acordeón'],
+  'Vientos':['Saxo alto','Saxo tenor','Saxo barítono','Trompeta','Trombón','Flauta','Clarinete','Oboe','Corno'],
+  'Percusión':['Batería','Percusión','Cajón','Congas','Bombo'],
+  'Voz':['Voz principal','Coros','Beatbox'],
+  'Otro':['DJ','Producción','Otro']
+};
+
+async function showProfile(){
+  if(!currentProfile) return;
+  document.getElementById('profUsername').value=currentProfile.username||'';
+  document.getElementById('profBio').value=currentProfile.bio||'';
+  document.getElementById('profEmail').textContent=currentUser?.email||'';
+  profSituacion=currentProfile.situacion||'disponible';
+  updateProfilePreview();
+  renderSituacion();
+  // Load instruments from DB
+  try{
+    const rows=await supaFetch('GET',`profile_instruments?profile_id=eq.${currentUser.id}&select=*`);
+    profInstruments=(rows||[]).map(r=>({instrumento:r.instrumento,nivel:r.nivel||3}));
+  }catch{ profInstruments=[]; }
+  renderProfInstruments();
+  // Load bands from DB
+  try{
+    const rows=await supaFetch('GET',`profile_bands?profile_id=eq.${currentUser.id}&select=band_id,bands(id,name)`);
+    profBands=(rows||[]).map(r=>({id:r.bands.id,name:r.bands.name}));
+  }catch{ profBands=[]; }
+  renderProfBands();
+  push('sProfile');
+}
+
+function renderSituacion(){
+  document.querySelectorAll('.sitOpt').forEach(el=>{
+    el.classList.toggle('on', el.dataset.val===profSituacion);
+    el.onclick=()=>{profSituacion=el.dataset.val;renderSituacion();};
+  });
+}
+
+function updateProfilePreview(){
+  const u=document.getElementById('profUsername')?.value||'?';
+  document.getElementById('profileAvatar').textContent=u.slice(0,2).toUpperCase();
+  document.getElementById('profileUsername').textContent='@'+u;
+}
+
+// ── Instruments ──────────────────────────────────
+function renderProfInstruments(){
+  const el=document.getElementById('profInstrList');
+  el.innerHTML='';
+  profInstruments.forEach((inst,i)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;background:#1e1a17;border:1px solid #2e2825;border-radius:6px;padding:8px 10px;';
+    row.innerHTML=`<span style="flex:1;font-family:'DM Sans',sans-serif;font-size:.88rem;color:#f0ebe3;">${esc(inst.instrumento)}</span>
+      <div class="starRating" id="stars_${i}"></div>
+      <button onclick="removeProfInstrument(${i})" style="background:none;border:none;color:#5c544c;cursor:pointer;font-size:.8rem;padding:2px 4px;">✕</button>`;
+    el.appendChild(row);
+    renderStars(i, inst.nivel);
+  });
+}
+
+function renderStars(idx, nivel){
+  const container=document.getElementById('stars_'+idx);
+  if(!container) return;
+  container.innerHTML='';
+  for(let s=1;s<=5;s++){
+    const star=document.createElement('span');
+    star.textContent='★';
+    star.className=s<=nivel?'on':'';
+    star.onclick=(()=>{const n=s;return()=>{profInstruments[idx].nivel=n;renderStars(idx,n);};})();
+    container.appendChild(star);
+  }
+}
+
+function removeProfInstrument(i){
+  profInstruments.splice(i,1);
+  renderProfInstruments();
+}
+
+function showInstrumentPicker(){
+  const el=document.getElementById('instrPickerContent');
+  el.innerHTML='';
+  Object.entries(INSTRUMENTS).forEach(([cat,list])=>{
+    const h=document.createElement('div');
+    h.style.cssText='font-family:DM Mono,monospace;font-size:.55rem;color:#5c544c;letter-spacing:2px;padding:10px 14px 4px;text-transform:uppercase;';
+    h.textContent=cat; el.appendChild(h);
+    list.forEach(inst=>{
+      const already=profInstruments.find(x=>x.instrumento===inst);
+      const d=document.createElement('div');
+      d.style.cssText=`display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #1e1a17;cursor:pointer;background:${already?'#1e2a1e':'transparent'};`;
+      d.innerHTML=`<span style="font-family:'DM Sans',sans-serif;font-size:.9rem;color:${already?'#4a9c6a':'#f0ebe3'};">${esc(inst)}</span>
+        ${already?'<span style="color:#4a9c6a;font-size:.7rem;">✓ agregado</span>':'<span style="color:#5c544c;font-size:.75rem;">+ agregar</span>'}`;
+      d.onclick=()=>{
+        if(!already){
+          profInstruments.push({instrumento:inst,nivel:3});
+          renderProfInstruments();
+          back();
+        }
+      };
+      el.appendChild(d);
+    });
+  });
+  push('sInstrPicker');
+}
+
+// ── Bands ────────────────────────────────────────
+function renderProfBands(){
+  const el=document.getElementById('profBandList');
+  el.innerHTML='';
+  profBands.forEach((b,i)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;background:#1e1a17;border:1px solid #2e2825;border-radius:6px;padding:8px 10px;';
+    row.innerHTML=`<span style="flex:1;font-family:'DM Sans',sans-serif;font-size:.88rem;color:#f0ebe3;">🎸 ${esc(b.name)}</span>
+      <button onclick="removeProfBand(${i})" style="background:none;border:none;color:#5c544c;cursor:pointer;font-size:.8rem;">✕</button>`;
+    el.appendChild(row);
+  });
+}
+
+async function searchBands(){
+  const q=document.getElementById('profBandInput').value.trim();
+  const sug=document.getElementById('bandSuggestions');
+  if(!q){sug.style.display='none';return;}
+  try{
+    const rows=await supaFetch('GET',`bands?name=ilike.*${q}*&select=id,name&limit=8`);
+    if(!rows||!rows.length){sug.style.display='none';return;}
+    sug.style.display='';
+    sug.innerHTML='';
+    rows.forEach(b=>{
+      const d=document.createElement('div');
+      d.style.cssText='padding:9px 12px;cursor:pointer;font-family:DM Sans,sans-serif;font-size:.88rem;color:#f0ebe3;border-bottom:1px solid #1e1a17;';
+      d.textContent=b.name;
+      d.onclick=()=>{
+        if(!profBands.find(x=>x.id===b.id)){profBands.push({id:b.id,name:b.name});renderProfBands();}
+        document.getElementById('profBandInput').value='';
+        sug.style.display='none';
+      };
+      sug.appendChild(d);
+    });
+  }catch{}
+}
+
+async function addBand(){
+  const name=document.getElementById('profBandInput').value.trim();
+  if(!name) return;
+  document.getElementById('bandSuggestions').style.display='none';
+  // Create band if doesn't exist
+  try{
+    const existing=await supaFetch('GET',`bands?name=eq.${encodeURIComponent(name)}&select=id,name`);
+    let band;
+    if(existing&&existing.length>0){
+      band=existing[0];
+    } else {
+      const res=await fetch(SUPA_URL+'/rest/v1/bands',{
+        method:'POST',
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+(localStorage.getItem('cb_token')||SUPA_KEY),'Content-Type':'application/json','Prefer':'return=representation'},
+        body:JSON.stringify({name,created_by:currentUser.id})
+      });
+      const created=await res.json();
+      band=Array.isArray(created)?created[0]:created;
+    }
+    if(band && !profBands.find(x=>x.id===band.id)){
+      profBands.push({id:band.id,name:band.name});
+      renderProfBands();
+    }
+    document.getElementById('profBandInput').value='';
+  }catch(e){alert('Error: '+e.message);}
+}
+
+function removeProfBand(i){ profBands.splice(i,1); renderProfBands(); }
+
+// ── Save ─────────────────────────────────────────
+async function saveProfile(){
+  const raw=document.getElementById('profUsername').value.trim();
+  const username=raw.toLowerCase().replace(/[^a-z0-9._]/g,'');
+  if(!username||username.length<3){alert('Username mínimo 3 caracteres.');return;}
+  const bio=document.getElementById('profBio').value.trim();
+  try{
+    // Check username
+    const check=await supaFetch('GET',`profiles?username=eq.${username}&select=id`);
+    if(check&&check.length>0&&check[0].id!==currentUser.id){alert('Ese username ya está en uso.');return;}
+    const token=localStorage.getItem('cb_token')||SUPA_KEY;
+    // Save profile
+    await fetch(SUPA_URL+'/rest/v1/profiles',{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+      body:JSON.stringify({id:currentUser.id,username,bio:bio||null,situacion:profSituacion})
+    });
+    // Save instruments: delete all then insert
+    await fetch(SUPA_URL+'/rest/v1/profile_instruments?profile_id=eq.'+currentUser.id,{method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token}});
+    if(profInstruments.length){
+      await fetch(SUPA_URL+'/rest/v1/profile_instruments',{
+        method:'POST',
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify(profInstruments.map(x=>({profile_id:currentUser.id,instrumento:x.instrumento,nivel:x.nivel})))
+      });
+    }
+    // Save bands: delete all then insert
+    await fetch(SUPA_URL+'/rest/v1/profile_bands?profile_id=eq.'+currentUser.id,{method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token}});
+    if(profBands.length){
+      await fetch(SUPA_URL+'/rest/v1/profile_bands',{
+        method:'POST',
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify(profBands.map(b=>({profile_id:currentUser.id,band_id:b.id})))
+      });
+    }
+    currentProfile={...currentProfile,username,bio:bio||null,situacion:profSituacion};
+    const disp=document.getElementById('userDisp');
+    if(disp) disp.textContent='@'+username;
+    alert('✓ Perfil guardado');
+    back();
+  }catch(e){alert('Error: '+e.message);}
 }
 
 // ═══════════════════════════════════════════════════
@@ -1054,27 +1431,61 @@ async function copySong(songId){
 // ═══════════════════════════════════════════════════
 function renderSongs(){
   const el=document.getElementById('songList');
+  // Update artist filter dropdown
+  const artistSel=document.getElementById('songArtistFilter');
+  const currentArtist=artistSel?artistSel.value:'';
+  if(artistSel){
+    const artists=[...new Set(songs.map(s=>s.artist||'').filter(Boolean))].sort();
+    artistSel.innerHTML='<option value="">Todos los artistas</option>'+
+      artists.map(a=>`<option value="${esc(a)}" ${a===currentArtist?'selected':''}>${esc(a)}</option>`).join('');
+  }
   if(!songs.length){el.innerHTML='<div class="empty">Sin canciones.<br>Tocá Structure o Upload Chords.</div>';return;}
+
+  // Apply filters
+  const searchQ=(document.getElementById('songSearch')?.value||'').toLowerCase();
+  const artistQ=currentArtist;
+  let filtered=songs.map((s,i)=>({...s,_i:i}));
+  if(searchQ) filtered=filtered.filter(s=>(s.title||'').toLowerCase().includes(searchQ)||(s.artist||'').toLowerCase().includes(searchQ));
+  if(artistQ) filtered=filtered.filter(s=>(s.artist||'')===artistQ);
+
+  if(!filtered.length){el.innerHTML='<div class="empty">Sin resultados.</div>';return;}
+
+  // Group by artist
+  const grouped={};
+  filtered.forEach(s=>{
+    const key=s.artist||'Sin artista';
+    if(!grouped[key]) grouped[key]=[];
+    grouped[key].push(s);
+  });
+
   el.innerHTML='';
-  songs.forEach((s,i)=>{
-    const isCC=s.type==='cc';
-    const isPublic=s.public===true;
-    const slNames=(s.slIds||[]).map(si=>sets[si]?.name).filter(Boolean).join(', ');
-    const d=document.createElement('div');d.className='card';
-    d.innerHTML=`<div class="card-info" onclick="openReader(${i})">
-      <div style="display:flex;align-items:center;gap:6px;">
-        <div class="card-title">${esc(s.title)}</div>
-        ${isCC?'<span class="badge">CC</span>':''}
-        ${isPublic?'<span style="font-family:DM Mono,monospace;font-size:.5rem;background:#1e2a1e;color:#4a9c6a;border:1px solid #2a3a2a;padding:1px 5px;border-radius:3px;letter-spacing:1px;">PÚB</span>':''}
+  Object.entries(grouped).sort(([a],[b])=>a.localeCompare(b)).forEach(([artist,list])=>{
+    // Artist header
+    const hdr=document.createElement('div');
+    hdr.style.cssText='font-family:DM Mono,monospace;font-size:.55rem;color:#5c544c;letter-spacing:2px;text-transform:uppercase;padding:10px 14px 4px;border-top:1px solid #1e1a17;';
+    hdr.textContent=artist;
+    el.appendChild(hdr);
+    list.forEach(s=>{
+      const i=s._i;
+      const isCC=s.type==='cc';
+      const isPublic=s.public===true;
+      const slNames=(s.slIds||[]).map(si=>sets[si]?.name).filter(Boolean).join(', ');
+      const d=document.createElement('div');d.className='card';
+      d.innerHTML=`<div class="card-info" onclick="openReader(${i})">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="card-title">${esc(s.title)}</div>
+          ${isCC?'<span class="badge">CC</span>':''}
+          ${isPublic?'<span style="font-family:DM Mono,monospace;font-size:.5rem;background:#1e2a1e;color:#4a9c6a;border:1px solid #2a3a2a;padding:1px 5px;border-radius:3px;letter-spacing:1px;">PÚB</span>':''}
+        </div>
+        <div class="card-sub">${s.bpm||120}bpm${s.capo?' · CAPO '+s.capo:''}${slNames?' · '+esc(slNames):''}</div>
       </div>
-      <div class="card-sub">${esc(s.artist||'—')} · ${s.sig||4}/4 · ${s.bpm||120}bpm${slNames?' · '+esc(slNames):''}</div>
-    </div>
-    <div class="card-acts">
-      <button class="icobtn" title="${isPublic?'Hacer privada':'Publicar'}" onclick="event.stopPropagation();togglePublic(${i})">${isPublic?'🔒':'🌐'}</button>
-      <button class="icobtn" onclick="event.stopPropagation();${isCC?`showCC(${i})`:`showMeta(${i})`}">✎</button>
-      <button class="icobtn" onclick="event.stopPropagation();askDel('song',${i})">✕</button>
-    </div>`;
-    el.appendChild(d);
+      <div class="card-acts">
+        <button class="icobtn" title="${isPublic?'Hacer privada':'Publicar'}" onclick="event.stopPropagation();togglePublic(${i})">${isPublic?'🔒':'🌐'}</button>
+        <button class="icobtn" onclick="event.stopPropagation();${isCC?`showCC(${i})`:`showMeta(${i})`}">✎</button>
+        <button class="icobtn" onclick="event.stopPropagation();askDel('song',${i})">✕</button>
+      </div>`;
+      el.appendChild(d);
+    });
   });
 }
 function renderSets(){
