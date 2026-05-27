@@ -1028,28 +1028,52 @@ async function doSetUsername(){
   }
   const banda=document.getElementById('loginBanda').value.trim();
   setLoginMsg('');
+  const btn=document.querySelector('#loginStep3 button[onclick="doSetUsername()"]');
+  if(btn){btn.textContent='...';btn.disabled=true;}
   try{
-    // Check if username taken by ANOTHER user
-    const check=await supaFetch('GET',`profiles?username=eq.${username}&select=id`);
-    if(check && check.length>0 && check[0].id!==currentUser.id){
-      setLoginMsg('Ese username ya está en uso.'); return;
-    }
-    // Upsert profile (works for both new and existing)
     const token=localStorage.getItem('cb_token')||SUPA_KEY;
+    // Check username availability (ignore errors — RLS may block, just try to upsert)
+    try{
+      const check=await supaFetch('GET',`profiles?username=eq.${username}&select=id`);
+      if(check && check.length>0 && check[0].id!==currentUser.id){
+        setLoginMsg('Ese username ya está en uso.');
+        if(btn){btn.textContent='LISTO →';btn.disabled=false;}
+        return;
+      }
+    }catch(e){ /* RLS may block anon check — proceed anyway */ }
+    // Upsert profile
     const res=await fetch(SUPA_URL+'/rest/v1/profiles',{
       method:'POST',
       headers:{
         'apikey':SUPA_KEY,
         'Authorization':'Bearer '+token,
         'Content-Type':'application/json',
-        'Prefer':'resolution=merge-duplicates'
+        'Prefer':'resolution=merge-duplicates,return=representation'
       },
-      body:JSON.stringify({id:currentUser.id, username, banda:banda||null})
+      body:JSON.stringify({
+        id:currentUser.id,
+        username,
+        banda:banda||null,
+        situacion:'[]',
+        created_at:new Date().toISOString()
+      })
     });
-    if(!res.ok){ const t=await res.text(); throw new Error(t); }
-    currentProfile={id:currentUser.id, username, banda:banda||null};
+    if(!res.ok){
+      const t=await res.text();
+      // If duplicate username error
+      if(t.includes('unique') || t.includes('duplicate')){
+        setLoginMsg('Ese username ya está en uso.');
+        if(btn){btn.textContent='LISTO →';btn.disabled=false;}
+        return;
+      }
+      throw new Error(t);
+    }
+    currentProfile={id:currentUser.id, username, banda:banda||null, situacion:[]};
     await afterLogin();
-  } catch(e){ setLoginMsg('Error: '+e.message); }
+  } catch(e){
+    setLoginMsg('Error: '+e.message);
+    if(btn){btn.textContent='LISTO →';btn.disabled=false;}
+  }
 }
 
 async function loadProfile(){
