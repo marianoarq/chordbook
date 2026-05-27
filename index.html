@@ -2478,6 +2478,8 @@ function saveMeta(){
   if(editIdx>=0)songs[editIdx]=entry; else{songs.push(entry);editIdx=songs.length-1;}
   syncSlSongs(editIdx,slIds); save(); openStructEd(editIdx);
 }
+
+function fillChips(id,cur){
   const box=document.getElementById(id);
   if(!sets.length){box.innerHTML='<span style="font-family:DM Mono,monospace;font-size:.6rem;color:#5c544c">Sin setlists</span>';return;}
   box.innerHTML='';
