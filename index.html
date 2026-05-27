@@ -416,8 +416,8 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
       <textarea id="profBio" class="inp" placeholder="Contá algo sobre vos..." style="min-height:60px;resize:none;"></textarea>
     </div>
 
-    <!-- Situación -->
-    <div><div class="lbl">Situación</div>
+    <!-- Situación - multi-select -->
+    <div><div class="lbl">Situación (podés elegir más de una)</div>
       <div style="display:flex;flex-direction:column;gap:6px;" id="situacionOpts">
         <label class="sitOpt" data-val="disponible">🎯 Disponible / Buscando banda</label>
         <label class="sitOpt" data-val="en_banda">🎸 Tocando en banda(s)</label>
@@ -516,6 +516,49 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
   </div>
 </div>
 
+<!-- MASTER SONG PICKER -->
+<div id="sMasterPicker" class="scr">
+  <div class="ed-hdr">
+    <button class="btn-back" onclick="back()">←</button>
+    <div class="ed-title">Catálogo de canciones</div>
+  </div>
+  <div style="padding:6px 14px;border-bottom:1px solid #2e2825;flex-shrink:0;display:flex;gap:6px;">
+    <input id="masterPickerSearch" type="text" placeholder="Buscar canción o artista..."
+      style="background:#1e1a17;border:1px solid #2e2825;color:#f0ebe3;font-family:'DM Sans',sans-serif;font-size:.78rem;padding:6px 11px;border-radius:20px;outline:none;flex:1;"
+      oninput="filterMasterPicker()">
+  </div>
+  <div class="scrollarea" id="masterPickerList"></div>
+  <!-- Add new artist/song to master -->
+  <div style="padding:10px 14px;border-top:1px solid #2e2825;background:#161311;flex-shrink:0;">
+    <button onclick="showAddToMaster()" style="width:100%;background:none;border:1px dashed #2e2825;color:#5c544c;padding:8px;border-radius:6px;font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:1px;cursor:pointer;">+ Agregar artista/canción nueva al catálogo</button>
+  </div>
+</div>
+
+<!-- ADD TO MASTER -->
+<div id="sAddToMaster" class="scr">
+  <div class="ed-hdr">
+    <button class="btn-back" onclick="back()">←</button>
+    <div class="ed-title">Agregar al catálogo</div>
+    <button class="btn-save" onclick="saveToMaster()">Guardar</button>
+  </div>
+  <div class="ed-body" style="gap:12px;">
+    <div><div class="lbl">Artista</div>
+      <input id="masterArtistInput" class="inp" placeholder="Nombre del artista" oninput="searchMasterArtist()">
+      <div id="masterArtistSug" style="display:none;background:#1e1a17;border:1px solid #2e2825;border-radius:6px;margin-top:4px;max-height:100px;overflow-y:auto;"></div>
+    </div>
+    <div><div class="lbl">Álbum</div>
+      <input id="masterAlbumInput" class="inp" placeholder="Nombre del álbum">
+      <div style="display:flex;gap:6px;margin-top:4px;">
+        <input id="masterAlbumYear" class="inp" type="number" placeholder="Año" style="width:80px;">
+      </div>
+    </div>
+    <div><div class="lbl">Canción</div>
+      <input id="masterSongInput" class="inp" placeholder="Título de la canción">
+    </div>
+    <div class="hint">Si el artista o álbum ya existe, buscalo arriba para no duplicarlo.</div>
+  </div>
+</div>
+
 <!-- ADD SONG TO BAND -->
 <div id="sAddSongToBand" class="scr">
   <div class="ed-hdr">
@@ -586,8 +629,37 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
     <button class="btn-save" onclick="saveMeta()">Siguiente →</button>
   </div>
   <div class="ed-body">
+    <!-- Link to master song -->
+    <div>
+      <div class="lbl">Canción de la base maestra</div>
+      <div id="masterSongLinked" style="display:none;background:#1e2a1e;border:1px solid #4a9c6a;border-radius:6px;padding:8px 12px;display:none;flex-direction:column;gap:2px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div id="masterSongName" style="font-family:'Cormorant Garamond',serif;font-size:1rem;font-weight:600;color:#4a9c6a;"></div>
+            <div id="masterSongAlbum" style="font-family:'DM Mono',monospace;font-size:.58rem;color:#5c544c;"></div>
+          </div>
+          <button onclick="unlinkMasterSong()" style="background:none;border:none;color:#5c544c;cursor:pointer;font-size:.8rem;">✕</button>
+        </div>
+      </div>
+      <button onclick="showMasterSongPicker()" id="masterSongPickerBtn" style="width:100%;background:none;border:1px dashed #2e2825;color:#5c544c;padding:8px;border-radius:6px;font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:1px;cursor:pointer;margin-top:4px;">🔍 Vincular a canción del catálogo</button>
+    </div>
     <div><div class="lbl">Título</div><input id="mT" class="inp" placeholder="Nombre"></div>
     <div><div class="lbl">Artista</div><input id="mA" class="inp" placeholder="Artista"></div>
+    <div class="row2">
+      <div><div class="lbl">Instrumento</div>
+        <select id="mInstrumento" class="inp">
+          <option value="">General</option>
+          <option value="Guitarra eléctrica">Guitarra eléctrica</option>
+          <option value="Guitarra acústica">Guitarra acústica</option>
+          <option value="Bajo">Bajo</option>
+          <option value="Piano/Teclado">Piano/Teclado</option>
+          <option value="Voz">Voz</option>
+          <option value="Batería">Batería</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </div>
+      <div><div class="lbl">Versión</div><input id="mVersionName" class="inp" placeholder="ej: acústica, vivo..."></div>
+    </div>
     <div class="row2">
       <div><div class="lbl">Compás</div><select id="mS" class="inp"><option value="4">4/4</option><option value="3">3/4</option><option value="2">2/4</option></select></div>
       <div><div class="lbl">BPM</div><input id="mB" class="inp" type="number" value="120" min="20" max="300"></div>
@@ -636,13 +708,41 @@ textarea.inp{resize:none;line-height:1.75;font-family:'DM Mono',monospace;font-s
 <div id="sCC" class="scr">
   <div class="ed-hdr">
     <button class="btn-back" onclick="back()">←</button>
-    <div class="ed-title" id="ccTitle">Classic Chords</div>
+    <div class="ed-title" id="ccTitle">Upload Classic Chords</div>
     <button class="btn-save" onclick="saveCC()">Guardar</button>
   </div>
   <div class="ed-body" style="gap:10px;">
+    <!-- Master song link -->
+    <div>
+      <div id="ccMasterLinked" style="display:none;background:#1e2a1e;border:1px solid #4a9c6a;border-radius:6px;padding:8px 12px;margin-bottom:4px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div id="ccMasterName" style="font-family:'Cormorant Garamond',serif;font-size:1rem;font-weight:600;color:#4a9c6a;"></div>
+            <div id="ccMasterAlbum" style="font-family:'DM Mono',monospace;font-size:.58rem;color:#5c544c;"></div>
+          </div>
+          <button onclick="unlinkCCMaster()" style="background:none;border:none;color:#5c544c;cursor:pointer;">✕</button>
+        </div>
+      </div>
+      <button onclick="showMasterSongPickerCC()" style="width:100%;background:none;border:1px dashed #2e2825;color:#5c544c;padding:7px;border-radius:6px;font-family:'DM Mono',monospace;font-size:.6rem;letter-spacing:1px;cursor:pointer;">🔍 Vincular al catálogo</button>
+    </div>
     <div class="row2">
       <div><div class="lbl">Título</div><input id="ccT" class="inp" placeholder="Nombre"></div>
       <div><div class="lbl">Artista</div><input id="ccA" class="inp" placeholder="Artista"></div>
+    </div>
+    <div class="row2">
+      <div><div class="lbl">Instrumento</div>
+        <select id="ccInstrumento" class="inp">
+          <option value="">General</option>
+          <option value="Guitarra eléctrica">Guitarra eléctrica</option>
+          <option value="Guitarra acústica">Guitarra acústica</option>
+          <option value="Bajo">Bajo</option>
+          <option value="Piano/Teclado">Piano/Teclado</option>
+          <option value="Voz">Voz</option>
+          <option value="Batería">Batería</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </div>
+      <div><div class="lbl">Versión</div><input id="ccVersionName" class="inp" placeholder="ej: acústica..."></div>
     </div>
     <div class="row2">
       <div><div class="lbl">BPM</div><input id="ccB" class="inp" type="number" value="120"></div>
@@ -1164,7 +1264,7 @@ function filterMusicians(){
     (m.instrumento||'').toLowerCase().includes(q)||
     (m.bio||'').toLowerCase().includes(q)
   );
-  if(buscaBanda) filtered=filtered.filter(m=>m.situacion==='disponible');
+  if(buscaBanda) filtered=filtered.filter(m=>Array.isArray(m.situacion)?m.situacion.includes('disponible'):m.situacion==='disponible');
   const el=document.getElementById('musicianList');
   if(!filtered.length){el.innerHTML='<div class="empty">Sin músicos encontrados.</div>';return;}
   el.innerHTML='';
@@ -1173,7 +1273,8 @@ function filterMusicians(){
     const isMe=currentUser&&m.id===currentUser.id;
     const d=document.createElement('div');d.className='card';
     const initials=(m.username||'?').slice(0,2).toUpperCase();
-    const sitLabel=sitLabels[m.situacion]||'';
+    const sits=Array.isArray(m.situacion)?m.situacion:(m.situacion?[m.situacion]:[]);
+    const sitLabel=sits.map(s=>sitLabels[s]||'').filter(Boolean).join(' · ');
     d.innerHTML=`
       <div style="width:44px;height:44px;border-radius:50%;background:#2e2825;border:2px solid ${m.situacion==='disponible'?'#4a9c6a':'#2e2825'};display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:1rem;color:#c96a4a;flex-shrink:0;">${initials}</div>
       <div class="card-info" style="cursor:default;">
@@ -1331,7 +1432,10 @@ async function loadBandTab(tab){
           <div style="font-family:'DM Mono',monospace;font-size:.65rem;color:${isPast?'#3a332e':'#c96a4a'};">📅 ${dateStr} · ${timeStr}hs</div>
           ${d.venue?`<div style="font-family:'DM Sans',sans-serif;font-size:.78rem;color:#b8b0a4;margin-top:3px;">📍 ${esc(d.venue)}${d.city?' · '+esc(d.city):''}</div>`:''}
           ${d.notes?`<div style="font-family:'DM Sans',sans-serif;font-size:.72rem;color:#5c544c;margin-top:4px;font-style:italic;">${esc(d.notes)}</div>`:''}
-          ${currentBandIsAdmin?`<div style="text-align:right;margin-top:6px;"><button onclick="deleteDate('${d.id}')" style="background:none;border:none;color:#3a332e;font-size:.65rem;font-family:DM Mono,monospace;cursor:pointer;">✕ eliminar</button></div>`:''}
+          ${currentBandIsAdmin?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
+            <button onclick='showEditDate(${JSON.stringify(d).replace(/'/g,"\\'")})'  style="background:none;border:1px solid #2e2825;color:#5c544c;font-size:.62rem;font-family:DM Mono,monospace;cursor:pointer;padding:3px 8px;border-radius:4px;">✎ editar</button>
+            <button onclick="deleteDate('${d.id}')" style="background:none;border:none;color:#3a332e;font-size:.62rem;font-family:DM Mono,monospace;cursor:pointer;">✕ eliminar</button>
+          </div>`:''}
         `;
         el.appendChild(div);
       });
@@ -1501,18 +1605,20 @@ async function showAddSongToBand(){
   renderAddSongToBandList();
 }
 
-function renderAddSongToBandList(){
+function renderAddSongToBandList(filter=''){
+  document.getElementById('addSongBandTitle').textContent='Repertorio — '+currentBand.name;
   const el=document.getElementById('addSongBandList');
   el.innerHTML='';
-  // Group by artist
-  const grouped={};
-  songs.forEach((s,i)=>{
-    const key=s.artist||'Sin artista';
-    if(!grouped[key]) grouped[key]=[];
-    grouped[key].push({s,i});
-  });
-  // Get songs already in band
+  const q=filter.toLowerCase();
   const inBand=new Set(currentBandSongs.map(s=>s.id));
+  const grouped={};
+  songs.filter(s=>!q||(s.title||'').toLowerCase().includes(q)||(s.artist||'').toLowerCase().includes(q))
+    .forEach((s,origI)=>{
+      const i=songs.indexOf(s);
+      const key=s.artist||'Sin artista';
+      if(!grouped[key]) grouped[key]=[];
+      grouped[key].push({s,i});
+    });
   Object.entries(grouped).sort(([a],[b])=>a.localeCompare(b)).forEach(([artist,list])=>{
     const hdr=document.createElement('div');
     hdr.style.cssText='font-family:DM Mono,monospace;font-size:.55rem;color:#5c544c;letter-spacing:2px;text-transform:uppercase;padding:10px 14px 4px;';
@@ -1591,20 +1697,46 @@ async function createBandSetlist(){
 }
 
 let currentDateType='gig';
+let editingDateId=null;
+
+function filterAddSongList(q){
+  renderAddSongToBandList(q||'');
+}
 
 function showAddDate(){
+  editingDateId=null;
   document.getElementById('addDateTitle').textContent='Nueva fecha — '+currentBand.name;
   document.getElementById('dateTitle').value='';
   document.getElementById('dateVenue').value='';
   document.getElementById('dateCity').value='';
   document.getElementById('dateNotes').value='';
-  // Set today's date as default
   const today=new Date().toISOString().split('T')[0];
   document.getElementById('dateDate').value=today;
+  document.getElementById('dateTime').value='21:00';
   currentDateType='gig';
-  // Init type selector
   document.querySelectorAll('#dateTypeOpts .sitOpt').forEach(el=>{
     el.classList.toggle('on', el.dataset.val==='gig');
+    el.onclick=()=>{
+      currentDateType=el.dataset.val;
+      document.querySelectorAll('#dateTypeOpts .sitOpt').forEach(x=>x.classList.toggle('on',x===el));
+    };
+  });
+  push('sAddDate');
+}
+
+function showEditDate(d){
+  editingDateId=d.id;
+  document.getElementById('addDateTitle').textContent='Editar fecha';
+  document.getElementById('dateTitle').value=d.title||'';
+  document.getElementById('dateVenue').value=d.venue||'';
+  document.getElementById('dateCity').value=d.city||'';
+  document.getElementById('dateNotes').value=d.notes||'';
+  const dt=new Date(d.date);
+  document.getElementById('dateDate').value=dt.toISOString().split('T')[0];
+  document.getElementById('dateTime').value=dt.toTimeString().slice(0,5);
+  currentDateType=d.type||'gig';
+  document.querySelectorAll('#dateTypeOpts .sitOpt').forEach(el=>{
+    el.classList.toggle('on', el.dataset.val===currentDateType);
     el.onclick=()=>{
       currentDateType=el.dataset.val;
       document.querySelectorAll('#dateTypeOpts .sitOpt').forEach(x=>x.classList.toggle('on',x===el));
@@ -1622,13 +1754,24 @@ async function saveDate(){
   const venue=document.getElementById('dateVenue').value.trim();
   const city=document.getElementById('dateCity').value.trim();
   const notes=document.getElementById('dateNotes').value.trim();
+  const token=localStorage.getItem('cb_token')||SUPA_KEY;
+  const payload={title,date:dateISO,venue:venue||null,city:city||null,notes:notes||null,type:currentDateType};
   try{
-    const token=localStorage.getItem('cb_token')||SUPA_KEY;
-    await fetch(SUPA_URL+'/rest/v1/band_dates',{
-      method:'POST',
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-      body:JSON.stringify({band_id:currentBand.id,title,date:dateISO,venue:venue||null,city:city||null,notes:notes||null,type:currentDateType,created_by:currentUser.id})
-    });
+    if(editingDateId){
+      // Edit existing
+      await fetch(SUPA_URL+'/rest/v1/band_dates?id=eq.'+editingDateId,{
+        method:'PATCH',
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
+    } else {
+      // Create new
+      await fetch(SUPA_URL+'/rest/v1/band_dates',{
+        method:'POST',
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify({...payload,band_id:currentBand.id,created_by:currentUser.id})
+      });
+    }
     back();
     loadBandTab('fechas');
   }catch(e){alert('Error: '+e.message);}
@@ -1651,7 +1794,7 @@ function showBandAdmin(){ bandTab('miembros'); }
 // ═══════════════════════════════════════════════════
 let profInstruments=[]; // [{instrumento, nivel}]
 let profBands=[];       // [{id, name}]
-let profSituacion='disponible';
+let profSituaciones=[];
 
 const INSTRUMENTS={
   'Cuerdas':['Guitarra eléctrica','Guitarra acústica','Guitarra clásica','Bajo eléctrico','Bajo acústico','Violín','Viola','Cello','Contrabajo','Ukulele','Mandolina','Arpa','Banjo'],
@@ -1667,7 +1810,9 @@ async function showProfile(){
   document.getElementById('profUsername').value=currentProfile.username||'';
   document.getElementById('profBio').value=currentProfile.bio||'';
   document.getElementById('profEmail').textContent=currentUser?.email||'';
-  profSituacion=currentProfile.situacion||'disponible';
+  // Handle both old string and new array format
+  const sit=currentProfile.situacion;
+  profSituaciones=Array.isArray(sit)?sit:(sit?[sit]:[]);
   updateProfilePreview();
   renderSituacion();
   // Load instruments from DB
@@ -1837,7 +1982,7 @@ async function saveProfile(){
     await fetch(SUPA_URL+'/rest/v1/profiles',{
       method:'POST',
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
-      body:JSON.stringify({id:currentUser.id,username,bio:bio||null,situacion:profSituacion})
+      body:JSON.stringify({id:currentUser.id,username,bio:bio||null,situacion:profSituaciones})
     });
     // Save instruments: delete all then insert
     await fetch(SUPA_URL+'/rest/v1/profile_instruments?profile_id=eq.'+currentUser.id,{method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token}});
@@ -1857,7 +2002,7 @@ async function saveProfile(){
         body:JSON.stringify(profBands.map(b=>({profile_id:currentUser.id,band_id:b.id})))
       });
     }
-    currentProfile={...currentProfile,username,bio:bio||null,situacion:profSituacion};
+    currentProfile={...currentProfile,username,bio:bio||null,situacion:profSituaciones};
     const disp=document.getElementById('userDisp');
     if(disp) disp.textContent='@'+username;
     alert('✓ Perfil guardado');
@@ -2095,6 +2240,10 @@ function renderSets(){
 // META EDITOR
 // ═══════════════════════════════════════════════════
 let editIdx=-1;
+let currentMasterSong=null; // {id, title, album, artist}
+let currentMasterSongForCC=null;
+let masterPickerCallback=null; // 'meta' or 'cc'
+
 function showMeta(idx=-1){
   editIdx=idx;
   const s=idx>=0?songs[idx]:{};
@@ -2106,10 +2255,205 @@ function showMeta(idx=-1){
   document.getElementById('mCapo').value=String(s.capo||0);
   document.getElementById('mDurMM').value=s.durMM||'';
   document.getElementById('mDurSS').value=s.durSS||'';
+  document.getElementById('mInstrumento').value=s.instrumento||'';
+  document.getElementById('mVersionName').value=s.versionName||'';
   fillChips('mChips',s.slIds||[]);
+  // Show master song link if exists
+  currentMasterSong=s.masterId?{id:s.masterId,title:s.masterTitle,album:s.masterAlbum}:null;
+  renderMasterLink('meta');
   push('sMeta');
 }
-function fillChips(id,cur){
+
+function renderMasterLink(type){
+  const linked=document.getElementById(type==='meta'?'masterSongLinked':'ccMasterLinked');
+  const btn=document.getElementById(type==='meta'?'masterSongPickerBtn':null);
+  const ms=type==='meta'?currentMasterSong:currentMasterSongForCC;
+  if(ms){
+    linked.style.display='flex';
+    linked.style.flexDirection='column';
+    document.getElementById(type==='meta'?'masterSongName':'ccMasterName').textContent=ms.title||'';
+    document.getElementById(type==='meta'?'masterSongAlbum':'ccMasterAlbum').textContent=ms.album||'';
+  } else {
+    linked.style.display='none';
+  }
+}
+
+function unlinkMasterSong(){ currentMasterSong=null; renderMasterLink('meta'); }
+function unlinkCCMaster(){ currentMasterSongForCC=null; renderMasterLink('cc'); }
+
+function showMasterSongPicker(){ masterPickerCallback='meta'; openMasterPicker(); }
+function showMasterSongPickerCC(){ masterPickerCallback='cc'; openMasterPicker(); }
+
+async function openMasterPicker(){
+  document.getElementById('masterPickerSearch').value='';
+  push('sMasterPicker');
+  await loadMasterPicker('');
+}
+
+let masterCache=[];
+async function loadMasterPicker(q){
+  const el=document.getElementById('masterPickerList');
+  el.innerHTML='<div class="empty">Cargando...</div>';
+  try{
+    // Load all songs_master with artist and album
+    const url=q
+      ? `songs_master?title=ilike.*${encodeURIComponent(q)}*&select=id,title,track_number,albums(id,name,year),artists(id,name)&order=title.asc&limit=50`
+      : `songs_master?select=id,title,track_number,albums(id,name,year),artists(id,name)&order=title.asc&limit=100`;
+    const rows=await supaFetch('GET',url);
+    masterCache=rows||[];
+    renderMasterPickerList(masterCache);
+  }catch(e){el.innerHTML=`<div class="empty">Error: ${e.message}</div>`;}
+}
+
+function filterMasterPicker(){
+  const q=document.getElementById('masterPickerSearch').value.trim();
+  if(q.length>1) loadMasterPicker(q);
+  else if(q.length===0) loadMasterPicker('');
+}
+
+function renderMasterPickerList(rows){
+  const el=document.getElementById('masterPickerList');
+  if(!rows.length){el.innerHTML='<div class="empty">Sin resultados.</div>';return;}
+  // Group by artist
+  const byArtist={};
+  rows.forEach(r=>{
+    const aname=r.artists?.name||'?';
+    if(!byArtist[aname]) byArtist[aname]=[];
+    byArtist[aname].push(r);
+  });
+  el.innerHTML='';
+  Object.entries(byArtist).sort(([a],[b])=>a.localeCompare(b)).forEach(([artist,songs])=>{
+    const hdr=document.createElement('div');
+    hdr.style.cssText='font-family:Bebas Neue,sans-serif;font-size:1rem;color:#c96a4a;letter-spacing:2px;padding:10px 14px 3px;';
+    hdr.textContent=artist; el.appendChild(hdr);
+    // Group by album
+    const byAlbum={};
+    songs.forEach(s=>{
+      const alb=s.albums?.name||'Sin álbum';
+      if(!byAlbum[alb]) byAlbum[alb]=[];
+      byAlbum[alb].push(s);
+    });
+    Object.entries(byAlbum).forEach(([album,tracks])=>{
+      const albHdr=document.createElement('div');
+      albHdr.style.cssText='font-family:DM Mono,monospace;font-size:.55rem;color:#5c544c;letter-spacing:1px;padding:5px 14px 2px;font-style:italic;';
+      albHdr.textContent=album; el.appendChild(albHdr);
+      tracks.sort((a,b)=>(a.track_number||0)-(b.track_number||0)).forEach(s=>{
+        const d=document.createElement('div');
+        d.style.cssText='display:flex;align-items:center;padding:9px 14px;border-bottom:1px solid #1e1a17;cursor:pointer;gap:8px;';
+        d.innerHTML=`
+          <span style="font-family:DM Mono,monospace;font-size:.55rem;color:#3a332e;min-width:18px;">${s.track_number||''}</span>
+          <span style="flex:1;font-family:'DM Sans',sans-serif;font-size:.9rem;color:#f0ebe3;">${esc(s.title)}</span>
+          <span style="font-family:DM Mono,monospace;font-size:.6rem;color:#4a9c6a;">vincular →</span>`;
+        d.onclick=()=>{
+          const ms={id:s.id,title:s.title,album:album,artist:artist};
+          if(masterPickerCallback==='meta'){
+            currentMasterSong=ms;
+            // Auto-fill title and artist
+            document.getElementById('mT').value=s.title;
+            document.getElementById('mA').value=artist;
+            renderMasterLink('meta');
+          } else {
+            currentMasterSongForCC=ms;
+            document.getElementById('ccT').value=s.title;
+            document.getElementById('ccA').value=artist;
+            renderMasterLink('cc');
+          }
+          back();
+        };
+        el.appendChild(d);
+      });
+    });
+  });
+}
+
+// Add to master
+let masterArtistId=null;
+async function searchMasterArtist(){
+  const q=document.getElementById('masterArtistInput').value.trim();
+  const sug=document.getElementById('masterArtistSug');
+  if(!q){sug.style.display='none';masterArtistId=null;return;}
+  const rows=await supaFetch('GET',`artists?name=ilike.*${encodeURIComponent(q)}*&select=id,name&limit=6`);
+  if(!rows||!rows.length){sug.style.display='none';masterArtistId=null;return;}
+  sug.style.display='';sug.innerHTML='';
+  rows.forEach(a=>{
+    const d=document.createElement('div');
+    d.style.cssText='padding:8px 12px;cursor:pointer;font-family:DM Sans,sans-serif;font-size:.88rem;color:#f0ebe3;border-bottom:1px solid #1e1a17;';
+    d.textContent=a.name;
+    d.onclick=()=>{masterArtistId=a.id;document.getElementById('masterArtistInput').value=a.name;sug.style.display='none';};
+    sug.appendChild(d);
+  });
+}
+
+async function saveToMaster(){
+  const artistName=document.getElementById('masterArtistInput').value.trim();
+  const albumName=document.getElementById('masterAlbumInput').value.trim();
+  const albumYear=parseInt(document.getElementById('masterAlbumYear').value)||null;
+  const songTitle=document.getElementById('masterSongInput').value.trim();
+  if(!artistName||!songTitle){alert('Artista y canción son obligatorios.');return;}
+  const token=localStorage.getItem('cb_token')||SUPA_KEY;
+  try{
+    let artistId=masterArtistId;
+    if(!artistId){
+      // Create artist
+      const ar=await fetch(SUPA_URL+'/rest/v1/artists',{method:'POST',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({name:artistName,created_by:currentUser.id})});
+      const arD=await ar.json();artistId=(Array.isArray(arD)?arD[0]:arD).id;
+    }
+    let albumId=null;
+    if(albumName){
+      const al=await fetch(SUPA_URL+'/rest/v1/albums',{method:'POST',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({artist_id:artistId,name:albumName,year:albumYear,created_by:currentUser.id})});
+      const alD=await al.json();albumId=(Array.isArray(alD)?alD[0]:alD).id;
+    }
+    const sm=await fetch(SUPA_URL+'/rest/v1/songs_master',{method:'POST',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({artist_id:artistId,album_id:albumId,title:songTitle,created_by:currentUser.id})});
+    const smD=await sm.json();
+    const newSong=Array.isArray(smD)?smD[0]:smD;
+    const ms={id:newSong.id,title:songTitle,album:albumName,artist:artistName};
+    if(masterPickerCallback==='meta'){
+      currentMasterSong=ms;
+      document.getElementById('mT').value=songTitle;
+      document.getElementById('mA').value=artistName;
+      renderMasterLink('meta');
+    } else {
+      currentMasterSongForCC=ms;
+      document.getElementById('ccT').value=songTitle;
+      document.getElementById('ccA').value=artistName;
+      renderMasterLink('cc');
+    }
+    // Go back to picker and reload
+    back(); back();
+    alert('✓ Agregado al catálogo');
+  }catch(e){alert('Error: '+e.message);}
+}
+
+function showAddToMaster(){ push('sAddToMaster'); }
+
+function saveMeta(){
+  const t=document.getElementById('mT').value.trim();
+  if(!t){alert('Título obligatorio.');return;}
+  const slIds=getChips('mChips');
+  const existing=editIdx>=0?songs[editIdx]:{};
+  const entry={
+    id:existing.id||uid(),
+    title:t, artist:document.getElementById('mA').value.trim(),
+    sig:parseInt(document.getElementById('mS').value)||4,
+    bpm:parseInt(document.getElementById('mB').value)||120,
+    capo:parseInt(document.getElementById('mCapo').value)||0,
+    durMM:parseInt(document.getElementById('mDurMM').value)||0,
+    durSS:parseInt(document.getElementById('mDurSS').value)||0,
+    instrumento:document.getElementById('mInstrumento').value||'',
+    versionName:document.getElementById('mVersionName').value.trim()||'',
+    masterId:currentMasterSong?.id||existing.masterId||null,
+    masterTitle:currentMasterSong?.title||existing.masterTitle||'',
+    masterAlbum:currentMasterSong?.album||existing.masterAlbum||'',
+    owner_id:existing.owner_id||currentUser?.id,
+    ownerUsername:existing.ownerUsername||currentProfile?.username||'',
+    slIds,
+    sections: existing.sections||[],
+    partes:   existing.partes||{},
+    estructura: existing.estructura||[]
+  };
+  if(editIdx>=0)songs[editIdx]=entry; else{songs.push(entry);editIdx=songs.length-1;}
+  syncSlSongs(editIdx,slIds); save(); openStructEd(editIdx);
+}
   const box=document.getElementById(id);
   if(!sets.length){box.innerHTML='<span style="font-family:DM Mono,monospace;font-size:.6rem;color:#5c544c">Sin setlists</span>';return;}
   box.innerHTML='';
@@ -2635,22 +2979,42 @@ function showCC(idx=-1){
   document.getElementById('ccCapo').value=String(s.capo||0);
   document.getElementById('ccDurMM').value=s.durMM||'';
   document.getElementById('ccDurSS').value=s.durSS||'';
+  document.getElementById('ccInstrumento').value=s.instrumento||'';
+  document.getElementById('ccVersionName').value=s.versionName||'';
   document.getElementById('ccContent').value=s.textContent||'';
+  currentMasterSongForCC=s.masterId?{id:s.masterId,title:s.masterTitle,album:s.masterAlbum}:null;
+  renderMasterLink('cc');
   fillChips('ccChips',s.slIds||[]);
   push('sCC');
 }
+
 function saveCC(){
-  const t=document.getElementById('ccT').value.trim();if(!t){alert('Título obligatorio.');return;}
+  const t=document.getElementById('ccT').value.trim();
+  if(!t){alert('Título obligatorio.');return;}
   const slIds=getChips('ccChips');
-  const id=ccEditIdx>=0?(songs[ccEditIdx]?.id||uid()):uid();
-  const entry={id,type:'cc',title:t,artist:document.getElementById('ccA').value.trim(),
+  const existing=ccEditIdx>=0?songs[ccEditIdx]:{};
+  const entry={
+    id:existing.id||uid(),
+    type:'cc',
+    title:t,
+    artist:document.getElementById('ccA').value.trim(),
     bpm:parseInt(document.getElementById('ccB').value)||120,
     sig:parseInt(document.getElementById('ccS').value)||4,
     capo:parseInt(document.getElementById('ccCapo').value)||0,
     durMM:parseInt(document.getElementById('ccDurMM').value)||0,
     durSS:parseInt(document.getElementById('ccDurSS').value)||0,
-    slIds, textContent:document.getElementById('ccContent').value};
-  if(ccEditIdx>=0)songs[ccEditIdx]=entry;else{songs.push(entry);ccEditIdx=songs.length-1;}
+    instrumento:document.getElementById('ccInstrumento').value||'',
+    versionName:document.getElementById('ccVersionName').value.trim()||'',
+    masterId:currentMasterSongForCC?.id||existing.masterId||null,
+    masterTitle:currentMasterSongForCC?.title||existing.masterTitle||'',
+    masterAlbum:currentMasterSongForCC?.album||existing.masterAlbum||'',
+    owner_id:existing.owner_id||currentUser?.id,
+    ownerUsername:existing.ownerUsername||currentProfile?.username||'',
+    slIds,
+    textContent:document.getElementById('ccContent').value
+  };
+  if(ccEditIdx>=0)songs[ccEditIdx]=entry;
+  else{songs.push(entry);ccEditIdx=songs.length-1;}
   syncSlSongs(ccEditIdx,slIds);save();back();
 }
 
